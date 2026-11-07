@@ -1,0 +1,21 @@
+{
+  "name": "ujol-chatbot-server",
+  "version": "1.0.0",
+  "description": "SmartExam AI (UJOL) Intelligent Chatbot Server powered by Google Gemini API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "chatbot",
+    "ujol",
+    "gemini",
+    "nodejs",
+    "smartexam"
+  ],
+  "author": "SmartExam AI",
+  "license": "ISC",
+  "dependencies": {
+    "mysql2": "^3.24.6"
+  }
+}

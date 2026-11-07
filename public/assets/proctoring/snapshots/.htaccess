@@ -1,0 +1,18 @@
+# SmartExam AI - Security Hardening: Disable Script Execution in Snapshots Directory
+# Mencegah eksekusi file script berbahaya yang disamarkan
+
+Options -ExecCGI -Indexes
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|php8|phps|cgi|pl|py|sh|asp|aspx)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
