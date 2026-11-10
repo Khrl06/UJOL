@@ -69,6 +69,7 @@ class App
         'teacher/generateQuestionsAuto' => ['controller' => 'TeacherController', 'method' => 'generateQuestionsAuto'],
         'teacher/generateOptionsAjax'   => ['controller' => 'TeacherController', 'method' => 'generateOptionsAjax'],
         'teacher/batchImportQuestions'  => ['controller' => 'TeacherController', 'method' => 'batchImportQuestions'],
+        'teacher/importQuestionsFile'   => ['controller' => 'TeacherController', 'method' => 'importQuestionsFile'],
         'teacher/editQuestion'      => ['controller' => 'TeacherController', 'method' => 'editQuestion'],
         'teacher/deleteQuestion'    => ['controller' => 'TeacherController', 'method' => 'deleteQuestion'],
         'teacher/duplicateQuestion' => ['controller' => 'TeacherController', 'method' => 'duplicateQuestion'],
