@@ -13,7 +13,7 @@
 5. [Entity Relationship Diagram (ERD)](#-entity-relationship-diagram-erd)
 6. [Arsitektur Database & 13 Tabel Utama](#-arsitektur-database--13-tabel-utama)
 7. [Daftar 13 Model & Relasi Antar-Entitas](#-daftar-13-model--relasi-antar-entitas)
-8. [Akun Seeder Development & Keamanan Sandi](#-akun-seeder-development--keamanan-sandi)
+8. [Manajemen Akun & Autentikasi Pengguna](#-manajemen-akun--autentikasi-pengguna)
 9. [Cara Menjalankan Proyek](#-cara-menjalankan-proyek)
 10. [Laporan Verifikasi Pengujian Sistem](#-laporan-verifikasi-pengujian-sistem)
 
@@ -114,20 +114,21 @@ Sistem keamanan otentikasi dan otorisasi dikelola secara terpusat oleh `App\Help
 
 ---
 
-## 🔑 Akun Seeder Development & Keamanan Sandi
+## 🔑 Manajemen Akun & Autentikasi Pengguna
 
-> [!WARNING]
-> **Pemberitahuan Keamanan Penting:**  
-> Kredensial di bawah ini **HANYA DIGUNAKAN UNTUK TAHAP DEVELOPMENT / PENGUJIAN LOKAL**.  
-> Seluruh kata sandi dienkripsi menggunakan algoritma `PASSWORD_BCRYPT` (tidak ada plaintext di database). Pada lingkungan produksi (*production*), kredensial bawaan ini wajib diganti dengan kata sandi acak berkekuatan tinggi.
+Sistem menggunakan enkripsi kata sandi standar industri `PASSWORD_BCRYPT` dan proteksi sesi ganda. 
 
-| Peran | Username | Kata Sandi Dev | Profil Terhubung | Keterangan Akses |
-| :--- | :--- | :--- | :--- | :--- |
-| **ADMIN** | `admin` | `admin123` | Administrator Utama | Akses penuh seluruh modul sekolah (`/admin/*`). |
-| **GURU** | `guru` | `guru123` | Budi Prasetyo, S.Pd., M.Kom. | Akses modul akademik & bank soal guru (`/teacher/*`). |
-| **PESERTA DIDIK**| `siswa` | `siswa123` | Ahmad Fauzi Pratama (XII MIPA 1) | Akses modul pelaksanaan ujian siswa (`/student/*`). |
-| **GURU 2** | `dewi.guru` | `guru123` | Dewi Ratnasari, S.Pd. | Akun pengajar Matematika. |
-| **SISWA 2** | `siti.siswa`| `siswa123` | Siti Nurhaliza Putri (XII MIPA 1) | Akun peserta didik kedua. |
+Untuk inisialisasi lingkungan pengujian lokal (development), akun pengguna awal dibuat secara otomatis saat menjalankan skrip migrasi/seeder database (`database/schema.sql` atau seeder terkait).
+
+| Peran | Identifikasi Akses | Lingkup Hak Akses |
+| :--- | :--- | :--- |
+| **ADMIN** | Akun Administrator | Akses penuh konfigurasi sistem, data master, pengaturan keamanan, dan audit log (`/admin/*`). |
+| **GURU** | Akun Tenaga Pendidik | Manajemen bank soal, perakitan paket ujian, pengawasan peserta, dan rekapitulasi nilai (`/teacher/*`). |
+| **PESERTA DIDIK** | Akun Siswa Terdaftar | Mengikuti sesi ujian terjadwal, pemeriksaan perangkat proctoring, dan lembar hasil ujian (`/student/*`). |
+
+> [!TIP]
+> **Praktik Keamanan Produksi:**  
+> Pada lingkungan produksi (*live server*), kata sandi akun bawaan wajib segera diubah melalui menu profil masing-masing pengguna atau diatur secara terisolasi via konfigurasi environment server. Jangan pernah mempublikasikan kata sandi operasional ke repositori publik.
 
 ---
 
