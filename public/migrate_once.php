@@ -21,6 +21,15 @@ try {
     }
     $cleanSql = implode("\n", $clean);
     
+    $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
+    $stmt = $pdo->query("SHOW TABLES");
+    $allTables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($allTables as $t) {
+        $pdo->exec("DROP TABLE IF EXISTS `$t`");
+    }
+    $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
+    echo "Dropped all old tables.\\n";
+
     $pdo->exec($cleanSql);
     echo "Schema executed successfully!\n";
     
