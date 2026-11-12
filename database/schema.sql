@@ -436,9 +436,9 @@ INSERT INTO `questions` (`id`, `question_bank_id`, `question_text`, `question_ty
 (5, 2, 'Apakah dua vektor yang memiliki hasil kali titik bernilai nol (0) saling tegak lurus (ortogonal)?', 'true_false', '{"A":"Benar","B":"Salah"}', 'A', 50.00, 'Dua vektor tak nol ortogonal jika dan hanya jika dot product keduanya sama dengan 0.', NOW());
 
 -- 8. SEEDER: exams
-INSERT INTO `exams` (`id`, `teacher_id`, `subject_id`, `question_bank_id`, `title`, `description`, `exam_date`, `start_time`, `end_time`, `duration_minutes`, `token`, `status`, `created_at`) VALUES
-(1, 1, 1, 1, 'Penilaian Akhir Semester - Informatika XII', 'Ujian PAS Gasal. Wajib mengaktifkan pengawasan dual camera dan tidak berpindah tab.', CURDATE(), '08:00:00', '10:00:00', 90, 'INF2026', 'ongoing', NOW()),
-(2, 2, 2, 2, 'Kuis Harian - Vektor Dimensi Tiga', 'Kuis bab vektor untuk menguji pemahaman konsep dot product dan proyeksi.', DATE_ADD(CURDATE(), INTERVAL 2 DAY), '10:00:00', '11:30:00', 60, 'VEK2026', 'scheduled', NOW());
+INSERT INTO `exams` (`id`, `teacher_id`, `subject_id`, `question_bank_id`, `title`, `description`, `start_date`, `end_date`, `exam_date`, `start_time`, `end_time`, `duration_minutes`, `token`, `status`, `created_at`) VALUES
+(1, 1, 1, 1, 'Penilaian Akhir Semester - Informatika XII', 'Ujian PAS Gasal. Wajib mengaktifkan pengawasan dual camera dan tidak berpindah tab.', CURDATE(), CURDATE(), CURDATE(), '08:00:00', '10:00:00', 90, 'INF2026', 'ongoing', NOW()),
+(2, 2, 2, 2, 'Kuis Harian - Vektor Dimensi Tiga', 'Kuis bab vektor untuk menguji pemahaman konsep dot product dan proyeksi.', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 2 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), '10:00:00', '11:30:00', 60, 'VEK2026', 'scheduled', NOW());
 
 -- 9. SEEDER: exam_participants
 INSERT INTO `exam_participants` (`id`, `exam_id`, `student_id`, `start_time`, `submit_time`, `status`, `score`, `ip_address`, `user_agent`, `created_at`) VALUES
