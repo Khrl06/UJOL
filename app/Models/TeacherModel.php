@@ -234,6 +234,7 @@ class TeacherModel extends Model
                 $this->db->rollBack();
             }
             error_log("Gagal membuat data guru: " . $e->getMessage());
+            \App\Helpers\SessionHelper::setFlash('danger', 'Detail error DB: ' . htmlspecialchars($e->getMessage()));
             return 0;
         }
     }
