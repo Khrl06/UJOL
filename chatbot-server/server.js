@@ -67,11 +67,17 @@ async function getAiConfig() {
     for (const r of rows) {
       config[r.setting_key] = r.setting_value;
     }
+    let savedList = [];
+    try {
+      savedList = JSON.parse(config.ai_providers_list || "[]");
+    } catch (_) {}
+
     return {
       provider: (config.ai_provider || "gemini").toLowerCase().trim(),
       modelName: (config.ai_model_name || "").trim(),
       apiKey: (config.ai_api_key || "").trim() || GEMINI_API_KEY,
-      baseUrl: (config.ai_base_url || "").trim()
+      baseUrl: (config.ai_base_url || "").trim(),
+      savedProviders: Array.isArray(savedList) ? savedList : []
     };
   } catch (err) {
     console.warn("[AI Config] Gagal membaca konfigurasi AI dari DB:", err.message);
@@ -79,7 +85,8 @@ async function getAiConfig() {
       provider: "gemini",
       modelName: "gemini-1.5-flash",
       apiKey: GEMINI_API_KEY,
-      baseUrl: ""
+      baseUrl: "",
+      savedProviders: []
     };
   }
 }
@@ -150,13 +157,26 @@ async function callUniversalAi(contents, systemInstruction) {
       const endpoint = config.baseUrl || "https://api.anthropic.com/v1/messages";
       const model = config.modelName || "claude-3-5-sonnet-20241022";
 
-      const claudeMessages = [];
+      const rawClaudeMessages = [];
       for (const item of contents) {
         const role = item.role === "model" ? "assistant" : "user";
         const text = item.parts?.[0]?.text || "";
         if (text) {
-          claudeMessages.push({ role, content: text });
+          rawClaudeMessages.push({ role, content: text });
         }
+      }
+
+      // Pastikan pesan Claude bergantian peran (alternating) dan diawali user
+      const claudeMessages = [];
+      for (const m of rawClaudeMessages) {
+        if (claudeMessages.length > 0 && claudeMessages[claudeMessages.length - 1].role === m.role) {
+          claudeMessages[claudeMessages.length - 1].content += "\n\n" + m.content;
+        } else {
+          claudeMessages.push({ role: m.role, content: m.content });
+        }
+      }
+      if (claudeMessages.length === 0 || claudeMessages[0].role !== "user") {
+        claudeMessages.unshift({ role: "user", content: "Halo" });
       }
 
       const res = await fetch(endpoint, {
@@ -170,7 +190,7 @@ async function callUniversalAi(contents, systemInstruction) {
           model: model,
           max_tokens: 1200,
           system: systemInstruction || BASE_SYSTEM_INSTRUCTION,
-          messages: claudeMessages.length > 0 ? claudeMessages : [{ role: "user", content: "Halo" }]
+          messages: claudeMessages
         }),
         signal: AbortSignal.timeout(20000)
       });
@@ -531,6 +551,7 @@ const server = http.createServer(async (req, res) => {
           hasApiKey: Boolean(aiConfig.apiKey),
           maskedKey: maskedKey
         },
+        savedProviders: aiConfig.savedProviders || [],
         presets: presets
       }));
     } catch (err) {
@@ -559,6 +580,33 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
+        // Ambil savedProviders dari database untuk auto-match apiKey & baseUrl jika tidak dikirim
+        const aiConfig = await getAiConfig();
+        const savedMatch = (aiConfig.savedProviders || []).find(
+          p => p.model_name === modelName || (p.provider === provider && p.model_name === modelName) || (p.provider === provider && !modelName)
+        );
+
+        let effectiveKey = apiKey;
+        let effectiveUrl = baseUrl;
+        if (savedMatch) {
+          if (savedMatch.api_key && !effectiveKey) {
+            effectiveKey = savedMatch.api_key;
+          }
+          if (savedMatch.base_url !== undefined && !effectiveUrl) {
+            effectiveUrl = savedMatch.base_url;
+          }
+
+          // Sinkronkan is_active di ai_providers_list
+          const updatedProviders = (aiConfig.savedProviders || []).map(p => ({
+            ...p,
+            is_active: p.id === savedMatch.id || (p.provider === provider && p.model_name === modelName)
+          }));
+          await pool.query(
+            "UPDATE system_settings SET setting_value = ? WHERE setting_key = 'ai_providers_list'",
+            [JSON.stringify(updatedProviders)]
+          );
+        }
+
         // Simpan ke tabel system_settings di MySQL
         await pool.query(
           "UPDATE system_settings SET setting_value = ? WHERE setting_key = 'ai_provider'",
@@ -568,20 +616,20 @@ const server = http.createServer(async (req, res) => {
           "UPDATE system_settings SET setting_value = ? WHERE setting_key = 'ai_model_name'",
           [modelName]
         );
-        if (baseUrl !== undefined) {
+        if (effectiveUrl !== undefined) {
           await pool.query(
             "UPDATE system_settings SET setting_value = ? WHERE setting_key = 'ai_base_url'",
-            [baseUrl]
+            [effectiveUrl]
           );
         }
-        if (apiKey && !apiKey.includes("••••")) {
+        if (effectiveKey && !effectiveKey.includes("••••")) {
           await pool.query(
             "UPDATE system_settings SET setting_value = ? WHERE setting_key = 'ai_api_key'",
-            [apiKey]
+            [effectiveKey]
           );
         }
 
-        console.log(`[AI Config Diperbarui]: Provider=${provider}, Model=${modelName}, BaseUrl=${baseUrl || '(default)'}`);
+        console.log(`[AI Config Diperbarui]: Provider=${provider}, Model=${modelName}, BaseUrl=${effectiveUrl || '(default)'}`);
 
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({
@@ -589,7 +637,7 @@ const server = http.createServer(async (req, res) => {
           message: `Model AI berhasil diubah ke ${modelName}`,
           provider: provider,
           modelName: modelName,
-          baseUrl: baseUrl
+          baseUrl: effectiveUrl
         }));
       } catch (err) {
         console.error("[Update AI Config Error]:", err.message);

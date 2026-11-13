@@ -256,6 +256,15 @@ try {
             'description'   => 'Endpoint server background chatbot interaktif real-time.',
             'is_secret'     => 0
         ],
+        [
+            'setting_group' => 'ai',
+            'setting_key'   => 'ai_providers_list',
+            'setting_value' => '[]',
+            'setting_type'  => 'json',
+            'title'         => 'Daftar Provider AI Tersimpan',
+            'description'   => 'Daftar penyedia dan model AI yang dikonfigurasikan sistem.',
+            'is_secret'     => 0
+        ],
 
         // GROUP: general (Identitas Sekolah & Environment)
         [

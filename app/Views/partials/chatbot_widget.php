@@ -1,5 +1,7 @@
 <?php
 use App\Helpers\AuthMiddleware;
+use App\Models\SettingModel;
+
 $chatUserContext = null;
 if (class_exists('App\Helpers\AuthMiddleware') && AuthMiddleware::isLoggedIn()) {
     $chatUserData = AuthMiddleware::user();
@@ -12,6 +14,13 @@ if (class_exists('App\Helpers\AuthMiddleware') && AuthMiddleware::isLoggedIn()) 
         ];
     }
 }
+
+// Ambil provider & model aktif serta daftar provider AI tersimpan dari database
+$widgetSettingModel = new SettingModel();
+$widgetRawProviders = $widgetSettingModel->get('ai_providers_list', '[]');
+$widgetSavedProviders = is_array($widgetRawProviders) ? $widgetRawProviders : (json_decode($widgetRawProviders, true) ?: []);
+$widgetActiveProvider = (string)$widgetSettingModel->get('ai_provider', 'claude');
+$widgetActiveModel = (string)$widgetSettingModel->get('ai_model_name', 'claude-3-5-sonnet-20241022');
 ?>
 <!-- ========================================================
      SmartExam AI (UJOL) - Floating Chatbot Widget ("Smarty AI")
@@ -64,7 +73,7 @@ if (class_exists('App\Helpers\AuthMiddleware') && AuthMiddleware::isLoggedIn()) 
                     <!-- Clean Clickable Model Pill Switcher -->
                     <button type="button" id="btn-quick-model-select" class="ujol-model-pill-btn" title="Klik untuk mengganti model AI">
                         <span class="model-status-indicator"></span>
-                        <span id="chat-header-model-name" class="text-truncate">Nemotron 3.5 Bolt</span>
+                        <span id="chat-header-model-name" class="text-truncate"><?= e($widgetActiveModel ?: "Claude 3.5 Sonnet") ?></span>
                         <i class="bi bi-chevron-down ms-1" style="font-size: 0.62rem;"></i>
                     </button>
                 </div>
@@ -84,90 +93,60 @@ if (class_exists('App\Helpers\AuthMiddleware') && AuthMiddleware::isLoggedIn()) 
                     <small class="text-uppercase fw-bold text-muted" style="font-size: 0.65rem; letter-spacing: 0.5px;">Ganti Model AI</small>
                     <span class="badge bg-light text-muted border" style="font-size: 0.6rem;">1-Klik Aktif</span>
                 </div>
-                <div class="model-options-list">
-                    <!-- Option 1: Nvidia Nemotron -->
-                    <div class="model-option-item active" data-provider="custom" data-model="nvidia/nemotron-3.5-bolt-e4b" data-url="https://integrate.api.nvidia.com/v1" data-label="Nemotron 3.5 Bolt">
-                        <div class="option-icon bg-success-subtle text-success">
-                            <i class="bi bi-lightning-charge-fill"></i>
-                        </div>
-                        <div class="option-details">
-                            <div class="option-title">Nvidia Nemotron 3.5 Bolt</div>
-                            <div class="option-desc">Cepat, Cerdas & Akurat</div>
-                        </div>
-                        <i class="bi bi-check-lg checkmark-active"></i>
-                    </div>
+                <div class="model-options-list" id="ujol-model-options-list">
+                    <?php if (!empty($widgetSavedProviders)): ?>
+                        <?php foreach ($widgetSavedProviders as $wsp):
+                            $wspProvider = strtolower($wsp['provider'] ?? 'gemini');
+                            $wspModel = $wsp['model_name'] ?? 'default';
+                            $wspLabel = $wsp['provider_name'] ?? ucfirst($wspProvider);
+                            $wspUrl = $wsp['base_url'] ?? '';
+                            $isWspActive = !empty($wsp['is_active']) || ($wspProvider === $widgetActiveProvider && $wspModel === $widgetActiveModel);
 
-                    <!-- Option 2: Google Gemini 2.5 Flash -->
-                    <div class="model-option-item" data-provider="gemini" data-model="gemini-2.5-flash" data-url="" data-label="Gemini 2.5 Flash">
-                        <div class="option-icon bg-primary-subtle text-primary">
-                            <i class="bi bi-stars"></i>
+                            $iconClass = match ($wspProvider) {
+                                'claude'     => 'bi-robot text-dark',
+                                'gemini'     => 'bi-google text-primary',
+                                'openai'     => 'bi-cpu text-success',
+                                'deepseek'   => 'bi-lightning-charge-fill text-info',
+                                'groq'       => 'bi-speedometer2 text-warning',
+                                'xai'        => 'bi-x-diamond-fill text-dark',
+                                'perplexity' => 'bi-compass-fill text-success',
+                                'ollama', 'lmstudio' => 'bi-hdd-network-fill text-secondary',
+                                default      => 'bi-stars text-primary'
+                            };
+                            $bgClass = match ($wspProvider) {
+                                'claude'     => 'bg-dark-subtle',
+                                'gemini'     => 'bg-primary-subtle',
+                                'openai'     => 'bg-success-subtle',
+                                'deepseek'   => 'bg-info-subtle',
+                                'groq'       => 'bg-warning-subtle',
+                                default      => 'bg-light'
+                            };
+                        ?>
+                        <div class="model-option-item <?= $isWspActive ? 'active' : '' ?>" 
+                             data-provider="<?= e($wspProvider) ?>" 
+                             data-model="<?= e($wspModel) ?>" 
+                             data-url="<?= e($wspUrl) ?>" 
+                             data-label="<?= e($wspLabel) ?>">
+                            <div class="option-icon <?= $bgClass ?>">
+                                <i class="bi <?= $iconClass ?>"></i>
+                            </div>
+                            <div class="option-details">
+                                <div class="option-title"><?= e($wspLabel) ?></div>
+                                <div class="option-desc font-mono" style="font-size: 0.68rem;"><?= e($wspModel) ?></div>
+                            </div>
+                            <i class="bi bi-check-lg checkmark-active"></i>
                         </div>
-                        <div class="option-details">
-                            <div class="option-title">Google Gemini 2.5 Flash</div>
-                            <div class="option-desc">Google AI &bull; Responsif & Cerdas</div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="model-option-item active" data-provider="claude" data-model="claude-3-5-sonnet-20241022" data-url="https://api.anthropic.com/v1/messages" data-label="Claude 3.5 Sonnet">
+                            <div class="option-icon bg-dark-subtle text-dark"><i class="bi bi-robot"></i></div>
+                            <div class="option-details">
+                                <div class="option-title">Anthropic Claude</div>
+                                <div class="option-desc">claude-3-5-sonnet-20241022</div>
+                            </div>
+                            <i class="bi bi-check-lg checkmark-active"></i>
                         </div>
-                        <i class="bi bi-check-lg checkmark-active"></i>
-                    </div>
-
-                    <!-- Option 3: Google Gemini 1.5 Flash -->
-                    <div class="model-option-item" data-provider="gemini" data-model="gemini-1.5-flash" data-url="" data-label="Gemini 1.5 Flash">
-                        <div class="option-icon bg-info-subtle text-info">
-                            <i class="bi bi-cpu"></i>
-                        </div>
-                        <div class="option-details">
-                            <div class="option-title">Google Gemini 1.5 Flash</div>
-                            <div class="option-desc">Google AI &bull; Stabil & Ringan</div>
-                        </div>
-                        <i class="bi bi-check-lg checkmark-active"></i>
-                    </div>
-
-                    <!-- Option 4: Google Gemini 1.5 Pro -->
-                    <div class="model-option-item" data-provider="gemini" data-model="gemini-1.5-pro" data-url="" data-label="Gemini 1.5 Pro">
-                        <div class="option-icon bg-purple-subtle text-primary" style="background: rgba(147, 51, 234, 0.12); color: #9333ea !important;">
-                            <i class="bi bi-mortarboard-fill"></i>
-                        </div>
-                        <div class="option-details">
-                            <div class="option-title">Google Gemini 1.5 Pro</div>
-                            <div class="option-desc">Penalaran & Analisis Mendalam</div>
-                        </div>
-                        <i class="bi bi-check-lg checkmark-active"></i>
-                    </div>
-
-                    <!-- Option 5: OpenAI GPT-4o Mini -->
-                    <div class="model-option-item" data-provider="openai" data-model="gpt-4o-mini" data-url="https://api.openai.com/v1" data-label="GPT-4o Mini">
-                        <div class="option-icon bg-warning-subtle text-dark">
-                            <i class="bi bi-robot"></i>
-                        </div>
-                        <div class="option-details">
-                            <div class="option-title">OpenAI GPT-4o Mini</div>
-                            <div class="option-desc">OpenAI &bull; Hemat & Teruji</div>
-                        </div>
-                        <i class="bi bi-check-lg checkmark-active"></i>
-                    </div>
-
-                    <!-- Option 6: Groq Llama 3.3 -->
-                    <div class="model-option-item" data-provider="groq" data-model="llama-3.3-70b-versatile" data-url="https://api.groq.com/openai/v1" data-label="Groq Llama 3.3">
-                        <div class="option-icon bg-danger-subtle text-danger">
-                            <i class="bi bi-speedometer2"></i>
-                        </div>
-                        <div class="option-details">
-                            <div class="option-title">Groq Llama 3.3 70B</div>
-                            <div class="option-desc">Groq LPU &bull; Kecepatan Ekstrem</div>
-                        </div>
-                        <i class="bi bi-check-lg checkmark-active"></i>
-                    </div>
-
-                    <!-- Option 7: DeepSeek Chat -->
-                    <div class="model-option-item" data-provider="deepseek" data-model="deepseek-chat" data-url="https://api.deepseek.com/v1" data-label="DeepSeek Chat">
-                        <div class="option-icon bg-secondary-subtle text-secondary">
-                            <i class="bi bi-chat-quote-fill"></i>
-                        </div>
-                        <div class="option-details">
-                            <div class="option-title">DeepSeek Chat V3</div>
-                            <div class="option-desc">DeepSeek &bull; Efisien & Logis</div>
-                        </div>
-                        <i class="bi bi-check-lg checkmark-active"></i>
-                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -1012,20 +991,25 @@ if (class_exists('App\Helpers\AuthMiddleware') && AuthMiddleware::isLoggedIn()) 
     const quickModelDropdown = document.getElementById("ujol-quick-model-dropdown");
     const headerModelName = document.getElementById("chat-header-model-name");
     const footerBadgeText = document.getElementById("chat-footer-badge-text");
-    const modelOptionItems = document.querySelectorAll(".model-option-item");
+    const modelOptionsListContainer = document.getElementById("ujol-model-options-list");
 
-    let currentModelSlug = "nvidia/nemotron-3.5-bolt-e4b";
+    let currentModelSlug = "<?= e($widgetActiveModel ?: 'claude-3-5-sonnet-20241022') ?>";
 
     // Format nama pendek untuk badge header & footer
     function formatModelShortName(modelSlug) {
-        if (!modelSlug) return "Nemotron 3.5 Bolt";
+        if (!modelSlug) return "AI Assistant";
+        if (modelSlug.includes("claude-3-5-sonnet")) return "Claude 3.5 Sonnet";
+        if (modelSlug.includes("claude-3-5-haiku")) return "Claude 3.5 Haiku";
+        if (modelSlug.includes("claude")) return "Anthropic Claude";
         if (modelSlug.includes("nemotron")) return "Nemotron 3.5 Bolt";
         if (modelSlug.includes("gemini-2.5-flash")) return "Gemini 2.5 Flash";
         if (modelSlug.includes("gemini-1.5-flash")) return "Gemini 1.5 Flash";
         if (modelSlug.includes("gemini-1.5-pro")) return "Gemini 1.5 Pro";
         if (modelSlug.includes("llama-3.3-70b")) return "Groq Llama 3.3";
         if (modelSlug.includes("gpt-4o-mini")) return "GPT-4o Mini";
+        if (modelSlug.includes("gpt-4o")) return "GPT-4o";
         if (modelSlug.includes("deepseek-chat")) return "DeepSeek Chat";
+        if (modelSlug.includes("deepseek-reasoner")) return "DeepSeek R1";
         const parts = modelSlug.split("/");
         return parts[parts.length - 1];
     }
@@ -1062,7 +1046,8 @@ if (class_exists('App\Helpers\AuthMiddleware') && AuthMiddleware::isLoggedIn()) 
         if (headerModelName) headerModelName.textContent = shortName;
         if (footerBadgeText) footerBadgeText.innerHTML = `Didukung oleh <strong>Node.js</strong> &bull; ${shortName}`;
 
-        modelOptionItems.forEach(item => {
+        const items = document.querySelectorAll(".model-option-item");
+        items.forEach(item => {
             if (item.getAttribute("data-model") === slug) {
                 item.classList.add("active");
             } else {
@@ -1071,54 +1056,109 @@ if (class_exists('App\Helpers\AuthMiddleware') && AuthMiddleware::isLoggedIn()) 
         });
     }
 
-    // Ambil status model awal dari server
+    // Pasang event listener klik pada setiap item opsi model
+    function bindModelOptionClicks() {
+        const items = document.querySelectorAll(".model-option-item");
+        items.forEach(item => {
+            // Hindari double event listener
+            if (item.dataset.bound === "true") return;
+            item.dataset.bound = "true";
+
+            item.addEventListener("click", async function() {
+                const provider = this.getAttribute("data-provider");
+                const model = this.getAttribute("data-model");
+                const baseUrl = this.getAttribute("data-url") || "";
+                const label = this.getAttribute("data-label") || model;
+
+                highlightActiveModelOption(model);
+                toggleQuickDropdown(false);
+
+                try {
+                    const response = await fetch(MODEL_CONFIG_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            provider: provider,
+                            modelName: model,
+                            baseUrl: baseUrl
+                        })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        appendMessage("assistant", 
+                            `⚡ Model AI dialihkan ke **${label}** (*${model}*). Ada yang bisa saya bantu?`
+                        );
+                    } else {
+                        console.error("Gagal ganti model:", result.error);
+                    }
+                } catch (err) {
+                    console.error("Gagal ganti model:", err);
+                }
+            });
+        });
+    }
+
+    // Render ulang list provider jika ada provider baru dari API
+    function renderSavedProviders(savedList, activeModel) {
+        if (!modelOptionsListContainer || !Array.isArray(savedList) || savedList.length === 0) return;
+
+        modelOptionsListContainer.innerHTML = "";
+        savedList.forEach(sp => {
+            const provider = (sp.provider || "gemini").toLowerCase();
+            const model = sp.model_name || "default";
+            const label = sp.provider_name || provider;
+            const baseUrl = sp.base_url || "";
+            const isActive = sp.is_active || (model === activeModel);
+
+            let icon = "bi-stars text-primary";
+            let bg = "bg-light";
+            if (provider === "claude") { icon = "bi-robot text-dark"; bg = "bg-dark-subtle"; }
+            else if (provider === "gemini") { icon = "bi-google text-primary"; bg = "bg-primary-subtle"; }
+            else if (provider === "openai") { icon = "bi-cpu text-success"; bg = "bg-success-subtle"; }
+            else if (provider === "deepseek") { icon = "bi-lightning-charge-fill text-info"; bg = "bg-info-subtle"; }
+            else if (provider === "groq") { icon = "bi-speedometer2 text-warning"; bg = "bg-warning-subtle"; }
+
+            const div = document.createElement("div");
+            div.className = `model-option-item ${isActive ? "active" : ""}`;
+            div.setAttribute("data-provider", provider);
+            div.setAttribute("data-model", model);
+            div.setAttribute("data-url", baseUrl);
+            div.setAttribute("data-label", label);
+
+            div.innerHTML = `
+                <div class="option-icon ${bg}">
+                    <i class="bi ${icon}"></i>
+                </div>
+                <div class="option-details">
+                    <div class="option-title">${label}</div>
+                    <div class="option-desc font-mono" style="font-size: 0.68rem;">${model}</div>
+                </div>
+                <i class="bi bi-check-lg checkmark-active"></i>
+            `;
+            modelOptionsListContainer.appendChild(div);
+        });
+
+        bindModelOptionClicks();
+    }
+
+    // Ambil status model awal dari server Node.js
     async function loadCurrentModel() {
+        bindModelOptionClicks();
         try {
             const res = await fetch(MODEL_CONFIG_URL);
             const data = await res.json();
-            if (data.success && data.current) {
-                highlightActiveModelOption(data.current.modelName);
+            if (data.success) {
+                if (data.savedProviders && data.savedProviders.length > 0) {
+                    renderSavedProviders(data.savedProviders, data.current?.modelName);
+                }
+                if (data.current?.modelName) {
+                    highlightActiveModelOption(data.current.modelName);
+                }
             }
         } catch (e) {
-            console.warn("[Chatbot] Gagal memuat info model aktif:", e);
+            console.warn("[Chatbot] Gagal memuat info model aktif dari server:", e);
         }
     }
-
-    // Klik opsi model langsung ganti (1-Klik)
-    modelOptionItems.forEach(item => {
-        item.addEventListener("click", async function() {
-            const provider = this.getAttribute("data-provider");
-            const model = this.getAttribute("data-model");
-            const baseUrl = this.getAttribute("data-url") || "";
-            const label = this.getAttribute("data-label") || model;
-
-            // Highlight langsung secara responsif
-            highlightActiveModelOption(model);
-            toggleQuickDropdown(false);
-
-            try {
-                const response = await fetch(MODEL_CONFIG_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        provider: provider,
-                        modelName: model,
-                        baseUrl: baseUrl
-                    })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    appendMessage("assistant", 
-                        `⚡ Model AI dialihkan ke **${label}** (*${model}*). Ada yang bisa saya bantu?`
-                    );
-                } else {
-                    console.error("Gagal ganti model:", result.error);
-                }
-            } catch (err) {
-                console.error("Gagal ganti model:", err);
-            }
-        });
-    });
 
     // Panggil saat widget dimuat
     loadCurrentModel();

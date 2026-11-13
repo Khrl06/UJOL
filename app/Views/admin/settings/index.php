@@ -588,21 +588,139 @@ function is_checked($settings, $key, $default = false) {
                     </div>
                 </div>
 
-                <!-- Live Test Result Banner -->
-                <div id="aiTestResultBox" class="d-none mt-4"></div>
-
-                <div class="mt-4 pt-3 border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <button type="button" class="btn btn-outline-warning text-dark font-semibold px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" id="btnTestAiConnection" onclick="testAiConnection()">
-                        <i class="bi bi-lightning-charge-fill text-warning"></i>
-                        <span>Uji Coba Respon AI</span>
-                    </button>
-
+                                <div class="mt-4 pt-3 border-top d-flex align-items-center justify-content-end flex-wrap gap-2">
                     <button type="submit" class="btn btn-primary px-4 py-2 rounded-3 font-semibold shadow-sm">
-                        <i class="bi bi-save2-fill me-1"></i> Simpan Konfigurasi AI
+                        <i class="bi bi-save2-fill me-1"></i> Simpan & Tambahkan ke List AI
                     </button>
                 </div>
             </div>
         </form>
+
+        <!-- ================================================================= -->
+        <!-- DAFTAR PROVIDER AI TERSIMPAN (LIST)                              -->
+        <!-- ================================================================= -->
+        <?php
+        $rawSavedProviders = get_val($aiSettings, 'ai_providers_list', '[]');
+        $savedProviders = is_array($rawSavedProviders) ? $rawSavedProviders : (json_decode($rawSavedProviders, true) ?: []);
+        $activeAiProvider = get_val($aiSettings, 'ai_provider', 'claude');
+        $activeAiModel = get_val($aiSettings, 'ai_model_name', 'claude-3-5-sonnet-20241022');
+        ?>
+        <div class="card-custom p-4 mb-4" id="sectionSavedAiProviders">
+            <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom flex-wrap gap-2">
+                <div>
+                    <h5 class="font-bold text-dark mb-1">
+                        <i class="bi bi-list-check text-success me-2"></i>Daftar Provider AI Tersimpan
+                    </h5>
+                    <p class="text-muted text-xs mb-0">Daftar semua penyedia AI yang telah Anda masukkan. Anda dapat mengganti provider aktif atau mengedit konfigurasi kapan saja.</p>
+                </div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle font-semibold text-xs px-3 py-1.5 rounded-pill">
+                    <i class="bi bi-cpu-fill me-1"></i> <?= count($savedProviders) ?> Provider Siap Pakai
+                </span>
+            </div>
+
+            <?php if (empty($savedProviders)): ?>
+                <div class="p-4 text-center text-muted text-sm border rounded-3 bg-light">
+                    <i class="bi bi-inbox fs-3 d-block mb-2 text-secondary"></i>
+                    Belum ada provider tambahan yang tersimpan. Gunakan formulir di atas untuk menyimpan provider AI pertama Anda.
+                </div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr class="text-xs text-uppercase text-muted">
+                                <th style="width: 250px;">Penyedia / Provider</th>
+                                <th>Model AI</th>
+                                <th>API Endpoint / Base URL</th>
+                                <th>Status</th>
+                                <th class="text-end" style="width: 180px;">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($savedProviders as $sp): 
+                                $isItemActive = !empty($sp['is_active']) || (($sp['provider'] ?? '') === $activeAiProvider && ($sp['model_name'] ?? '') === $activeAiModel);
+                                $spProvider = strtolower($sp['provider'] ?? 'gemini');
+                                $spModel = $sp['model_name'] ?? '-';
+                                $spUrl = $sp['base_url'] ?? '';
+                                $spKey = $sp['api_key'] ?? '';
+                                $maskedKey = !empty($spKey) ? (strlen($spKey) > 12 ? substr($spKey, 0, 7) . '••••••••' . substr($spKey, -4) : '••••••••') : 'Bawaan / Tanpa Key';
+
+                                $iconClass = match ($spProvider) {
+                                    'claude'     => 'bi-robot text-dark',
+                                    'gemini'     => 'bi-google text-primary',
+                                    'openai'     => 'bi-cpu text-success',
+                                    'deepseek'   => 'bi-lightning-charge-fill text-info',
+                                    'groq'       => 'bi-speedometer2 text-warning',
+                                    'xai'        => 'bi-x-diamond-fill text-dark',
+                                    'perplexity' => 'bi-compass-fill text-success',
+                                    'ollama', 'lmstudio' => 'bi-hdd-network-fill text-secondary',
+                                    default      => 'bi-stars text-primary'
+                                };
+                            ?>
+                            <tr class="<?= $isItemActive ? 'table-success bg-opacity-25' : '' ?>">
+                                <td>
+                                    <div class="d-flex align-items-center gap-2.5">
+                                        <div class="rounded-3 d-flex align-items-center justify-content-center bg-light border p-2" style="width: 36px; height: 36px;">
+                                            <i class="bi <?= $iconClass ?> fs-6"></i>
+                                        </div>
+                                        <div>
+                                            <strong class="d-block text-dark text-sm"><?= e($sp['provider_name'] ?? ucfirst($spProvider)) ?></strong>
+                                            <span class="text-muted font-mono text-2xs"><?= e($maskedKey) ?></span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border font-mono text-xs px-2 py-1">
+                                        <?= e($spModel) ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted font-mono text-xs text-truncate d-inline-block" style="max-width: 250px;" title="<?= e($spUrl) ?>">
+                                        <?= !empty($spUrl) ? e($spUrl) : '<span class="fst-italic text-secondary">Default Provider Endpoint</span>' ?>
+                                    </small>
+                                </td>
+                                <td>
+                                    <?php if ($isItemActive): ?>
+                                        <span class="badge bg-success text-white px-2.5 py-1 rounded-pill text-xs d-inline-flex align-items-center gap-1">
+                                            <i class="bi bi-check-circle-fill"></i> Aktif Digunakan
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary-subtle text-secondary px-2.5 py-1 rounded-pill text-xs">
+                                            Tersimpan
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex align-items-center gap-1.5">
+                                        <?php if (!$isItemActive): ?>
+                                            <form action="<?= base_url('admin/activateAiProvider') ?>" method="POST" class="d-inline">
+                                                <?= CsrfHelper::tokenField() ?>
+                                                <input type="hidden" name="provider_id" value="<?= e($sp['id'] ?? '') ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-success py-1 px-2.5 rounded-2 text-xs font-semibold d-inline-flex align-items-center gap-1" title="Aktifkan provider ini untuk sistem & chatbot">
+                                                    <i class="bi bi-play-fill"></i> Aktifkan
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+
+                                        <button type="button" class="btn btn-sm btn-light border py-1 px-2 rounded-2 text-xs" title="Muat ke formulir untuk edit" onclick='editSavedProvider(<?= json_encode($sp) ?>)'>
+                                            <i class="bi bi-pencil-square text-muted"></i>
+                                        </button>
+
+                                        <form action="<?= base_url('admin/deleteAiProvider') ?>" method="POST" class="d-inline" onsubmit="return confirm('Hapus provider <?= e($sp['provider_name'] ?? '') ?> dari daftar tersimpan?');">
+                                            <?= CsrfHelper::tokenField() ?>
+                                            <input type="hidden" name="provider_id" value="<?= e($sp['id'] ?? '') ?>">
+                                            <button type="submit" class="btn btn-sm btn-light border py-1 px-2 rounded-2 text-xs text-danger" title="Hapus dari daftar">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 
     <!-- ================================================================= -->
@@ -925,72 +1043,25 @@ function onAiProviderChange() {
     }
 }
 
-function testAiConnection() {
-    const provider = document.getElementById('aiProviderSelect').value;
-    const modelName = document.getElementById('aiModelNameInput').value.trim();
-    const apiKey = document.getElementById('aiApiKeyInput').value.trim();
-    const baseUrl = document.getElementById('aiBaseUrlInput').value.trim();
-    const btn = document.getElementById('btnTestAiConnection');
-    const resultBox = document.getElementById('aiTestResultBox');
-
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menguji Respon AI...';
-    resultBox.className = 'd-none';
-
-    const formData = new FormData();
-    formData.append('csrf_token', '<?= CsrfHelper::generateToken() ?>');
-    formData.append('provider', provider);
-    formData.append('model_name', modelName);
-    formData.append('api_key', apiKey);
-    formData.append('base_url', baseUrl);
-
-    fetch('<?= base_url('admin/testAiConnection') ?>', {
-        method: 'POST',
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-lightning-charge-fill text-warning me-1"></i> Uji Coba Respon AI';
-        resultBox.classList.remove('d-none');
-
-        if (data.success) {
-            resultBox.className = 'alert alert-success d-flex align-items-start gap-3 py-3 px-3 rounded-3 shadow-sm border-0';
-            resultBox.innerHTML = `
-                <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle flex-shrink-0" style="width: 32px; height: 32px;">
-                    <i class="bi bi-check-lg fs-5"></i>
-                </div>
-                <div class="flex-grow-1">
-                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-                        <strong class="text-success text-sm">Koneksi AI Berhasil Terhubung!</strong>
-                        <span class="badge bg-success-subtle text-success border border-success-subtle text-xs px-2.5 py-1 rounded-pill">
-                            ${data.provider || provider} &bull; ${data.model || modelName}
-                        </span>
-                    </div>
-                    <div class="p-2.5 bg-white bg-opacity-75 rounded-2 font-mono text-xs text-dark border border-success-subtle mt-1 shadow-2xs">
-                        <strong>Respon Model:</strong> "${data.reply || 'OK'}"
-                    </div>
-                </div>
-            `;
-        } else {
-            resultBox.className = 'alert alert-danger d-flex align-items-start gap-3 py-3 px-3 rounded-3 shadow-sm border-0';
-            resultBox.innerHTML = `
-                <div class="d-inline-flex align-items-center justify-content-center bg-danger text-white rounded-circle flex-shrink-0" style="width: 32px; height: 32px;">
-                    <i class="bi bi-exclamation-triangle-fill fs-6"></i>
-                </div>
-                <div class="flex-grow-1">
-                    <strong class="text-danger text-sm d-block mb-1">Uji Koneksi AI Gagal</strong>
-                    <p class="text-xs text-danger mb-0">${data.message || 'Terjadi kesalahan saat menghubungi API penyedia AI.'}</p>
-                </div>
-            `;
-        }
-    })
-    .catch(err => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-lightning-charge-fill text-warning me-1"></i> Uji Coba Respon AI';
-        resultBox.classList.remove('d-none');
-        resultBox.className = 'alert alert-danger d-flex align-items-start gap-2 py-3 px-3 rounded-3 shadow-sm';
-        resultBox.innerHTML = '<i class="bi bi-exclamation-octagon-fill text-danger fs-5"></i> <div><strong>Error Network:</strong> ' + err.message + '</div>';
-    });
+function editSavedProvider(sp) {
+    if (!sp) return;
+    const providerSelect = document.getElementById('aiProviderSelect');
+    if (providerSelect && sp.provider) {
+        providerSelect.value = sp.provider;
+        onAiProviderChange();
+    }
+    if (sp.model_name) {
+        document.getElementById('aiModelNameInput').value = sp.model_name;
+    }
+    if (sp.base_url !== undefined) {
+        document.getElementById('aiBaseUrlInput').value = sp.base_url;
+    }
+    if (sp.api_key) {
+        document.getElementById('aiApiKeyInput').value = sp.api_key;
+    }
+    const form = document.getElementById('formAiSettings');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 </script>

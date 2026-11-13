@@ -1072,6 +1072,71 @@ class AdminController extends Controller
             if (!isset($postedSettings['wa_gateway_enabled'])) {
                 $postedSettings['wa_gateway_enabled'] = '0';
             }
+        } elseif ($tab === 'ai') {
+            $provider = strtolower(trim($postedSettings['ai_provider'] ?? 'gemini'));
+            $modelName = trim($postedSettings['ai_model_name'] ?? '');
+            $baseUrl = trim($postedSettings['ai_base_url'] ?? '');
+            $apiKey = trim($postedSettings['ai_api_key'] ?? '');
+
+            $providerLabels = [
+                'gemini'     => 'Google Gemini',
+                'openai'     => 'OpenAI (GPT-4o)',
+                'claude'     => 'Anthropic Claude',
+                'deepseek'   => 'DeepSeek AI',
+                'groq'       => 'Groq Cloud',
+                'openrouter' => 'OpenRouter',
+                'mistral'    => 'Mistral AI',
+                'together'   => 'Together AI',
+                'xai'        => 'xAI (Grok)',
+                'perplexity' => 'Perplexity AI',
+                'ollama'     => 'Ollama (Lokal)',
+                'lmstudio'   => 'LM Studio / vLLM',
+                'custom'     => 'Custom URL'
+            ];
+            $providerName = $providerLabels[$provider] ?? ucfirst($provider);
+
+            $rawList = $this->settingModel->get('ai_providers_list', []);
+            $providersList = is_array($rawList) ? $rawList : (json_decode($rawList, true) ?: []);
+
+            $foundIndex = -1;
+            foreach ($providersList as $idx => $item) {
+                if (($item['provider'] ?? '') === $provider && ($item['model_name'] ?? '') === $modelName) {
+                    $foundIndex = $idx;
+                    break;
+                }
+            }
+
+            // Jika api_key kosong tapi sebelumnya sudah ada key tersimpan untuk provider ini, pertahankan key lama
+            if (empty($apiKey) && $foundIndex !== -1 && !empty($providersList[$foundIndex]['api_key'])) {
+                $apiKey = $providersList[$foundIndex]['api_key'];
+                $postedSettings['ai_api_key'] = $apiKey;
+            }
+
+            // Non-aktifkan semua provider lain
+            foreach ($providersList as &$p) {
+                $p['is_active'] = false;
+            }
+            unset($p);
+
+            $entry = [
+                'id'            => $provider . '_' . time(),
+                'provider'      => $provider,
+                'provider_name' => $providerName,
+                'model_name'    => $modelName,
+                'base_url'      => $baseUrl,
+                'api_key'       => $apiKey,
+                'is_active'     => true,
+                'updated_at'    => date('Y-m-d H:i:s')
+            ];
+
+            if ($foundIndex !== -1) {
+                $entry['id'] = $providersList[$foundIndex]['id'] ?? $entry['id'];
+                $providersList[$foundIndex] = $entry;
+            } else {
+                array_unshift($providersList, $entry);
+            }
+
+            $postedSettings['ai_providers_list'] = json_encode($providersList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         }
 
         // Sanitasi dan simpan
@@ -1129,207 +1194,107 @@ class AdminController extends Controller
         $this->json($res);
     }
 
-    public function testAiConnection(): void
+    public function activateAiProvider(): void
     {
         if (!$this->isPost()) {
-            $this->json(['success' => false, 'message' => 'Metode request tidak diizinkan.'], 405);
+            $this->redirect('admin/settings?tab=ai');
             return;
         }
 
         $csrfToken = $this->getPost('csrf_token', '');
         if (!CsrfHelper::validateToken($csrfToken)) {
-            $this->json(['success' => false, 'message' => 'Token CSRF tidak valid.'], 403);
+            SessionHelper::setFlash('danger', 'Sesi form telah kedaluwarsa.');
+            $this->redirect('admin/settings?tab=ai');
             return;
         }
 
-        $provider = strtolower(trim($this->getPost('provider', 'gemini')));
-        $apiKey   = trim($this->getPost('api_key', ''));
-        $model    = trim($this->getPost('model_name', ''));
-        $baseUrl  = trim($this->getPost('base_url', ''));
+        $providerId = trim($this->getPost('provider_id', ''));
+        $rawList = $this->settingModel->get('ai_providers_list', []);
+        $providersList = is_array($rawList) ? $rawList : (json_decode($rawList, true) ?: []);
 
-        if (empty($apiKey)) {
-            $apiKey = (string)$this->settingModel->get('ai_api_key', '');
-        }
-        if (empty($apiKey) && $provider === 'gemini') {
-            $apiKey = 'AQ.Ab8RN6IdqRznTT2HZKQfBXfHKGj7m_V3pDiKmCjeOKk58LELfA';
-        }
-
-        if (empty($apiKey) && $provider !== 'ollama') {
-            $this->json(['success' => false, 'message' => 'API Key wajib diisi untuk menguji koneksi AI provider.'], 422);
-            return;
-        }
-
-        try {
-            if ($provider === 'gemini') {
-                $requestedModel = $model ?: 'gemini-2.5-flash';
-                $geminiCandidates = array_unique([$requestedModel, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-1.5-flash']);
-                
-                $lastErrMsg = '';
-                foreach ($geminiCandidates as $modelName) {
-                    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key=" . urlencode($apiKey);
-                    $body = json_encode([
-                        'contents' => [
-                            ['parts' => [['text' => 'Halo, ini pesan uji koneksi. Jawab "Koneksi Google Gemini AI Berhasil!" secara singkat.']]]
-                        ]
-                    ]);
-
-                    $ch = curl_init($url);
-                    curl_setopt_array($ch, [
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_POST           => true,
-                        CURLOPT_POSTFIELDS     => $body,
-                        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-                        CURLOPT_TIMEOUT        => 12,
-                        CURLOPT_SSL_VERIFYPEER => false
-                    ]);
-                    $response = curl_exec($ch);
-                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                    $curlErr  = curl_error($ch);
-                    curl_close($ch);
-
-                    if ($curlErr) {
-                        $lastErrMsg = 'cURL Error: ' . $curlErr;
-                        continue;
-                    }
-
-                    $resData = json_decode($response, true);
-                    if ($httpCode >= 200 && $httpCode < 300 && isset($resData['candidates'][0]['content']['parts'][0]['text'])) {
-                        $reply = $resData['candidates'][0]['content']['parts'][0]['text'];
-                        $this->json(['success' => true, 'provider' => 'Google Gemini', 'model' => $modelName, 'reply' => trim($reply)]);
-                        return;
-                    } else {
-                        $lastErrMsg = $resData['error']['message'] ?? "HTTP Status {$httpCode}";
-                    }
-                }
-
-                $this->json(['success' => false, 'message' => "Gagal respon dari Google Gemini ({$lastErrMsg})"], 400);
-                return;
-            } elseif ($provider === 'claude') {
-                $endpoint = !empty($baseUrl) ? rtrim($baseUrl, '/') : 'https://api.anthropic.com/v1/messages';
-                $modelName = $model ?: 'claude-3-5-sonnet-20241022';
-                $body = json_encode([
-                    'model'      => $modelName,
-                    'max_tokens' => 200,
-                    'messages'   => [['role' => 'user', 'content' => 'Halo, ini uji koneksi. Jawab "Koneksi Anthropic Claude Berhasil!" secara singkat.']]
-                ]);
-
-                $ch = curl_init($endpoint);
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_POST           => true,
-                    CURLOPT_POSTFIELDS     => $body,
-                    CURLOPT_HTTPHEADER     => [
-                        "x-api-key: {$apiKey}",
-                        "anthropic-version: 2023-06-01",
-                        "content-type: application/json"
-                    ],
-                    CURLOPT_TIMEOUT        => 15,
-                    CURLOPT_SSL_VERIFYPEER => false
-                ]);
-                $response = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                $curlErr  = curl_error($ch);
-                curl_close($ch);
-
-                if ($curlErr) {
-                    $this->json(['success' => false, 'message' => 'cURL Error: ' . $curlErr], 500);
-                    return;
-                }
-
-                $resData = json_decode($response, true);
-                if ($httpCode >= 200 && $httpCode < 300 && isset($resData['content'][0]['text'])) {
-                    $reply = $resData['content'][0]['text'];
-                    $this->json(['success' => true, 'provider' => 'Anthropic Claude', 'model' => $modelName, 'reply' => trim($reply)]);
-                } else {
-                    $errMsg = $resData['error']['message'] ?? "HTTP {$httpCode}";
-                    $this->json(['success' => false, 'message' => "Gagal respon dari Claude: {$errMsg}"], 400);
-                }
-                return;
+        $activated = null;
+        foreach ($providersList as &$p) {
+            if (($p['id'] ?? '') === $providerId) {
+                $p['is_active'] = true;
+                $activated = $p;
             } else {
-                // Standar OpenAI-Compatible API: OpenAI, DeepSeek, Groq, OpenRouter, Mistral, Together, Ollama, Custom
-                $endpoint = '';
-                if (!empty($baseUrl)) {
-                    $endpoint = rtrim($baseUrl, '/');
-                    if (!str_ends_with($endpoint, '/chat/completions')) {
-                        $endpoint .= '/chat/completions';
-                    }
-                } else {
-                    $endpoint = match ($provider) {
-                        'deepseek'   => 'https://api.deepseek.com/v1/chat/completions',
-                        'groq'       => 'https://api.groq.com/openai/v1/chat/completions',
-                        'openrouter' => 'https://openrouter.ai/api/v1/chat/completions',
-                        'mistral'    => 'https://api.mistral.ai/v1/chat/completions',
-                        'together'   => 'https://api.together.xyz/v1/chat/completions',
-                        'perplexity' => 'https://api.perplexity.ai/chat/completions',
-                        'xai'        => 'https://api.x.ai/v1/chat/completions',
-                        'ollama'     => 'http://localhost:11434/v1/chat/completions',
-                        'lmstudio'   => 'http://localhost:1234/v1/chat/completions',
-                        default      => 'https://api.openai.com/v1/chat/completions'
-                    };
-                }
-
-                $modelName = $model ?: match ($provider) {
-                    'deepseek'   => 'deepseek-chat',
-                    'groq'       => 'llama-3.3-70b-versatile',
-                    'openrouter' => 'deepseek/deepseek-chat',
-                    'mistral'    => 'mistral-large-latest',
-                    'together'   => 'meta-llama/Llama-3-70b-chat-hf',
-                    'perplexity' => 'sonar',
-                    'xai'        => 'grok-2-latest',
-                    'ollama'     => 'llama3',
-                    'lmstudio'   => 'local-model',
-                    default      => 'gpt-4o-mini'
-                };
-
-                $body = json_encode([
-                    'model'       => $modelName,
-                    'messages'    => [
-                        ['role' => 'user', 'content' => "Halo, ini pesan uji koneksi. Jawab 'Koneksi AI ({$provider}) Berhasil Aktif!' secara singkat."]
-                    ],
-                    'temperature' => 0.6
-                ]);
-
-                $headers = [
-                    'Content-Type: application/json',
-                    "Authorization: Bearer {$apiKey}"
-                ];
-                if ($provider === 'openrouter') {
-                    $headers[] = 'HTTP-Referer: http://localhost/UJOL';
-                    $headers[] = 'X-Title: SmartExam AI';
-                }
-
-                $ch = curl_init($endpoint);
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_POST           => true,
-                    CURLOPT_POSTFIELDS     => $body,
-                    CURLOPT_HTTPHEADER     => $headers,
-                    CURLOPT_TIMEOUT        => 15,
-                    CURLOPT_SSL_VERIFYPEER => false
-                ]);
-                $response = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                $curlErr  = curl_error($ch);
-                curl_close($ch);
-
-                if ($curlErr) {
-                    $this->json(['success' => false, 'message' => 'cURL Error: ' . $curlErr], 500);
-                    return;
-                }
-
-                $resData = json_decode($response, true);
-                if ($httpCode >= 200 && $httpCode < 300 && isset($resData['choices'][0]['message']['content'])) {
-                    $reply = $resData['choices'][0]['message']['content'];
-                    $this->json(['success' => true, 'provider' => ucfirst($provider), 'model' => $modelName, 'reply' => trim($reply)]);
-                } else {
-                    $errMsg = $resData['error']['message'] ?? (is_string($resData['error'] ?? null) ? $resData['error'] : "HTTP {$httpCode}");
-                    $this->json(['success' => false, 'message' => "Gagal respon dari {$provider} ({$errMsg})"], 400);
-                }
-                return;
+                $p['is_active'] = false;
             }
-        } catch (\Throwable $e) {
-            $this->json(['success' => false, 'message' => 'Kesalahan sistem: ' . $e->getMessage()], 500);
         }
+        unset($p);
+
+        if ($activated) {
+            $this->settingModel->updateBatch([
+                'ai_provider'       => $activated['provider'],
+                'ai_model_name'     => $activated['model_name'],
+                'ai_base_url'       => $activated['base_url'],
+                'ai_api_key'        => $activated['api_key'],
+                'ai_providers_list' => json_encode($providersList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+            ]);
+
+            $adminUser = AuthMiddleware::user();
+            $this->auditModel->logActivity(
+                $adminUser['id'] ?? null,
+                'AI_PROVIDER_SWITCHED',
+                "Administrator mengaktifkan Provider AI: {$activated['provider_name']} ({$activated['model_name']})."
+            );
+
+            SessionHelper::setFlash('success', 'Provider AI berhasil dialihkan ke: <strong>' . htmlspecialchars($activated['provider_name']) . '</strong> (' . htmlspecialchars($activated['model_name']) . ').');
+        } else {
+            SessionHelper::setFlash('warning', 'Provider AI tidak ditemukan.');
+        }
+
+        $this->redirect('admin/settings?tab=ai');
+    }
+
+    public function deleteAiProvider(): void
+    {
+        if (!$this->isPost()) {
+            $this->redirect('admin/settings?tab=ai');
+            return;
+        }
+
+        $csrfToken = $this->getPost('csrf_token', '');
+        if (!CsrfHelper::validateToken($csrfToken)) {
+            SessionHelper::setFlash('danger', 'Sesi form telah kedaluwarsa.');
+            $this->redirect('admin/settings?tab=ai');
+            return;
+        }
+
+        $providerId = trim($this->getPost('provider_id', ''));
+        $rawList = $this->settingModel->get('ai_providers_list', []);
+        $providersList = is_array($rawList) ? $rawList : (json_decode($rawList, true) ?: []);
+
+        $deletedName = '';
+        $wasActive = false;
+        $newList = [];
+
+        foreach ($providersList as $p) {
+            if (($p['id'] ?? '') === $providerId) {
+                $deletedName = $p['provider_name'] ?? 'Provider';
+                $wasActive = !empty($p['is_active']);
+            } else {
+                $newList[] = $p;
+            }
+        }
+
+        $updateData = [
+            'ai_providers_list' => json_encode($newList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        ];
+
+        if ($wasActive && !empty($newList)) {
+            $newList[0]['is_active'] = true;
+            $updateData['ai_provider'] = $newList[0]['provider'];
+            $updateData['ai_model_name'] = $newList[0]['model_name'];
+            $updateData['ai_base_url'] = $newList[0]['base_url'];
+            $updateData['ai_api_key'] = $newList[0]['api_key'];
+            $updateData['ai_providers_list'] = json_encode($newList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        }
+
+        $this->settingModel->updateBatch($updateData);
+
+        SessionHelper::setFlash('success', 'Provider AI <strong>' . htmlspecialchars($deletedName) . '</strong> berhasil dihapus dari daftar tersimpan.');
+        $this->redirect('admin/settings?tab=ai');
     }
 
     private function renderModulePlaceholder(string $title, string $icon, string $desc): void
