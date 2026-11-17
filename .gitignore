@@ -1,3 +1,7 @@
+# Composer dependencies
+vendor/
+.phpunit.cache/
+
 # Environment variables & secrets
 .env
 .env.local
@@ -23,6 +27,8 @@ storage/cache/*
 !storage/cache/.gitkeep
 storage/sessions/*
 !storage/sessions/.gitkeep
+public/assets/proctoring/snapshots/*
+!public/assets/proctoring/snapshots/.gitkeep
 
 # Operating System & IDE
 Thumbs.db
@@ -33,4 +39,3 @@ $RECYCLE.BIN/
 .idea/
 .vscode/*
 !.vscode/settings.json
-

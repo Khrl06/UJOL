@@ -4,7 +4,8 @@
   "description": "SmartExam AI (UJOL) Intelligent Chatbot Server powered by Google Gemini API",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node -c server.js db.js dbQueries.js"
   },
   "keywords": [
     "chatbot",

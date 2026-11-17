@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartExam AI — Prototipe Figma Interaktif & UX Simulator</title>
+    <!-- Bootstrap 5 CSS & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --figma-bg: #1e1e1e;
+            --figma-sidebar: #2c2c2c;
+            --figma-border: #383838;
+            --figma-accent: #0d99ff;
+            --figma-canvas: #e5e5e5;
+            
+            --brand-primary: #2563EB;
+            --brand-navy: #1E3A8A;
+            --brand-teal: #0D9488;
+            --brand-amber: #F59E0B;
+            --brand-danger: #EF4444;
+            --brand-slate: #0F172A;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--figma-bg);
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Toolbar */
+        .figma-topbar {
+            height: 52px;
+            background-color: var(--figma-sidebar);
+            border-bottom: 1px solid var(--figma-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 100;
+        }
+
+        .figma-tools {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: #d1d5db;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .tool-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+
+        .tool-btn.active {
+            background: var(--figma-accent);
+            color: #ffffff;
+        }
+
+        /* Main Workspace */
+        .figma-workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Left Navigation (Frame Explorer) */
+        .figma-leftpanel {
+            width: 280px;
+            background-color: var(--figma-sidebar);
+            border-right: 1px solid var(--figma-border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            padding: 14px 16px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #9ca3af;
+            font-weight: 700;
+            border-bottom: 1px solid var(--figma-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .frame-nav-item {
+            padding: 12px 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            color: #e5e7eb;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.15s;
+            text-decoration: none;
+        }
+
+        .frame-nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+        }
+
+        .frame-nav-item.active {
+            background: rgba(13, 153, 255, 0.12);
+            border-left-color: var(--figma-accent);
+            color: #ffffff;
+        }
+
+        .frame-nav-item .icon {
+            font-size: 16px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .frame-nav-item.active .icon {
+            color: var(--figma-accent);
+        }
+
+        /* Canvas Area */
+        .figma-canvas {
+            flex: 1;
+            background-color: var(--figma-canvas);
+            overflow: auto;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* Frame Card Simulation */
+        .preview-device {
+            background: #ffffff;
+            color: #1e293b;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 1140px;
+            min-height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        /* Mockup Header */
+        .mock-header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mock-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 17px;
+            color: var(--brand-navy);
+        }
+
+        /* Right Inspector Panel */
+        .figma-rightpanel {
+            width: 320px;
+            background-color: var(--figma-sidebar);
+            border-left: 1px solid var(--figma-border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 16px;
+            font-size: 13px;
+        }
+
+        .inspector-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .token-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            margin-bottom: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        /* Interactive Widgets */
+        .dual-cam-hud {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 180px;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 12px;
+            padding: 10px;
+            color: white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 50;
+        }
+
+        .chatbot-floating-widget {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            width: 350px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            z-index: 60;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOPBAR FIGMA SIMULATOR -->
+    <header class="figma-topbar">
+        <div class="figma-tools">
+            <div class="d-flex align-items-center gap-2 me-3">
+                <span class="badge bg-primary px-2.5 py-1.5"><i class="bi bi-figma me-1"></i> FIGMA AI/UX SIMULATOR</span>
+                <span class="text-xs text-white-50">SmartExam AI (UJOL)</span>
+            </div>
+            <div class="vr bg-secondary my-2"></div>
+            <button class="tool-btn active" id="btnDesktopView"><i class="bi bi-display"></i> Desktop 1440px</button>
+            <button class="tool-btn" id="btnTabletView"><i class="bi bi-tablet"></i> Tablet 840px</button>
+            <a href="http://localhost/UJOL/public" target="_blank" class="tool-btn text-info"><i class="bi bi-box-arrow-up-right"></i> Buka Aplikasi Live</a>
+        </div>
+        <div>
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1.5">
+                <i class="bi bi-check-circle-fill me-1"></i> SNI & ISO/IEC 19505 Ready
+            </span>
+        </div>
+    </header>
+
+    <!-- WORKSPACE -->
+    <div class="figma-workspace">
+
+        <!-- LEFT PANEL: FRAME SELECTOR -->
+        <aside class="figma-leftpanel">
+            <div class="panel-header">
+                <span>5 Frame Storyboard</span>
+                <span class="badge bg-secondary text-white">v3.0</span>
+            </div>
+            <div class="py-2">
+                <div class="frame-nav-item active" onclick="switchFrame('frame1', this)">
+                    <i class="bi bi-shield-lock icon"></i>
+                    <div>
+                        <div class="fw-bold fs-7">FRAME 01</div>
+                        <div class="text-xs text-muted">Gateway Login & 2FA OTP</div>
+                    </div>
+                </div>
+
+                <div class="frame-nav-item" onclick="switchFrame('frame2', this)">
+                    <i class="bi bi-cpu icon"></i>
+                    <div>
+                        <div class="fw-bold fs-7">FRAME 02</div>
+                        <div class="text-xs text-muted">Admin AI Provider Studio</div>
+                    </div>
+                </div>
+
+                <div class="frame-nav-item" onclick="switchFrame('frame3', this)">
+                    <i class="bi bi-camera-video icon"></i>
+                    <div>
+                        <div class="fw-bold fs-7">FRAME 03</div>
+                        <div class="text-xs text-muted">Teacher Live Proctoring Matrix</div>
+                    </div>
+                </div>
+
+                <div class="frame-nav-item" onclick="switchFrame('frame4', this)">
+                    <i class="bi bi-laptop icon"></i>
+                    <div>
+                        <div class="fw-bold fs-7">FRAME 04</div>
+                        <div class="text-xs text-muted">Student Exam & Dual Cam HUD</div>
+                    </div>
+                </div>
+
+                <div class="frame-nav-item" onclick="switchFrame('frame5', this)">
+                    <i class="bi bi-robot icon"></i>
+                    <div>
+                        <div class="fw-bold fs-7">FRAME 05</div>
+                        <div class="text-xs text-muted">Smarty AI Chatbot Dock</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-header mt-3">
+                <span>Dokumen Pendukung</span>
+            </div>
+            <div class="p-3 text-xs text-secondary">
+                <p class="mb-2"><i class="bi bi-file-earmark-word text-primary me-1.5"></i> Laporan Word: <a href="http://localhost/UJOL/Laporan_PRD_UML_SmartExamAI.docx" class="text-info text-decoration-none">Unduh .docx</a></p>
+                <p class="mb-0"><i class="bi bi-markdown text-warning me-1.5"></i> Markdown PRD: <a href="http://localhost/UJOL/PRD_UML_SmartExamAI_Presentation.md" class="text-info text-decoration-none">Lihat .md</a></p>
+            </div>
+        </aside>
+
+        <!-- CANVAS AREA (PROTOTYPE SIMULATOR) -->
+        <main class="figma-canvas" id="canvasContainer">
+
+            <!-- THE PREVIEW DEVICE CONTAINER -->
+            <div class="preview-device" id="previewDevice">
+                
+                <!-- TOP NAVBAR MOCKUP -->
+                <div class="mock-header">
+                    <div class="mock-brand">
+                        <div class="bg-primary text-white rounded-3 p-1.5 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <div>
+                            <span>SmartExam AI</span>
+                            <span class="badge bg-primary-subtle text-primary ms-2 fs-8 fw-semibold">SMA / SEDERAJAT</span>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="text-end d-none d-md-block">
+                            <div class="fw-bold fs-7 text-dark" id="mockUserRole">Administrator Utama</div>
+                            <div class="text-xs text-muted">SMA Negeri 1 Unggulan</div>
+                        </div>
+                        <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DYNAMIC CONTENT FRAME INJECTION -->
+                <div class="p-4 flex-grow-1 position-relative" id="frameContent">
+                    <!-- CONTENT INJECTED BY JAVASCRIPT -->
+                </div>
+
+            </div>
+
+        </main>
+
+        <!-- RIGHT PANEL: INSPECTOR & DESIGN TOKENS -->
+        <aside class="figma-rightpanel">
+            <div class="inspector-title" id="inspectorTitle">FRAME 01: Gateway Portal</div>
+            <p class="text-muted text-xs mb-3" id="inspectorDesc">
+                Titik masuk terpadu dengan autentikasi multi-role (Siswa, Guru, Admin) dan perlindungan 2-Factor Authentication via OTP Email & WhatsApp.
+            </p>
+
+            <div class="panel-header px-0 mb-2">
+                <span>Design Tokens (Tokens Figma)</span>
+            </div>
+            
+            <div class="mb-3">
+                <div class="token-chip w-100">
+                    <span class="color-dot" style="background: #1E3A8A;"></span>
+                    <span>Primary Navy: #1E3A8A</span>
+                </div>
+                <div class="token-chip w-100">
+                    <span class="color-dot" style="background: #2563EB;"></span>
+                    <span>Accent Blue: #2563EB</span>
+                </div>
+                <div class="token-chip w-100">
+                    <span class="color-dot" style="background: #0D9488;"></span>
+                    <span>Status Teal: #0D9488</span>
+                </div>
+                <div class="token-chip w-100">
+                    <span class="color-dot" style="background: #F59E0B;"></span>
+                    <span>Warning Amber: #F59E0B</span>
+                </div>
+            </div>
+
+            <div class="panel-header px-0 mb-2">
+                <span>Mapping UML Standar SNI</span>
+            </div>
+            <div class="bg-black bg-opacity-25 p-2.5 rounded-3 mb-3 border border-secondary border-opacity-25">
+                <div class="text-xs text-info fw-bold mb-1"><i class="bi bi-diagram-3 me-1"></i> Use Case Relasi:</div>
+                <div class="text-xs text-light" id="umlMapping">UC-SISWA-01, UC-GURU-01, UC-ADMIN-01 (Login & OTP)</div>
+                <div class="text-xs text-info fw-bold mt-2 mb-1"><i class="bi bi-activity me-1"></i> Swimlane Activity:</div>
+                <div class="text-xs text-light" id="swimlaneMapping">Siswa & Guru -> Minta OTP -> Eksternal Email OTP</div>
+            </div>
+
+            <div class="panel-header px-0 mb-2">
+                <span>Interaktivitas Figma</span>
+            </div>
+            <div class="text-xs text-muted">
+                Klik tombol di dalam kanvas untuk mencoba alur simulasi antarmuka, pengalihan model AI, dan modal verifikasi.
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const frames = {
+            frame1: {
+                title: "FRAME 01: Gateway Portal & 2FA OTP",
+                desc: "Pintu masuk autentikasi aman 3 aktor dengan verifikasi 2 langkah OTP Email/WhatsApp untuk mencegah joki akun.",
+                userRole: "Portal Tamu / Guest",
+                uml: "1. Use Case Siswa / Guru / Admin (Login) -> <<include>> Verifikasi Email (OTP)",
+                swimlane: "Peserta Didik -> Buka SmartExam AI -> Login -> Minta OTP -> Input Kode Valid?",
+                html: `
+                    <div class="row justify-content-center align-items-center h-100 py-4">
+                        <div class="col-md-5">
+                            <div class="card border-0 shadow-sm rounded-4 p-4 text-center">
+                                <div class="mb-3">
+                                    <div class="d-inline-flex p-3 bg-primary bg-opacity-10 text-primary rounded-circle">
+                                        <i class="bi bi-shield-lock-fill fs-2"></i>
+                                    </div>
+                                </div>
+                                <h4 class="fw-bold text-dark mb-1">Masuk ke SmartExam AI</h4>
+                                <p class="text-muted text-xs mb-4">Sistem Ujian Online Terintegrasi SMA/SMK/MA</p>
+
+                                <div class="mb-3 text-start">
+                                    <label class="form-label text-xs fw-semibold text-secondary">Username / NISN / NIP</label>
+                                    <input type="text" class="form-control rounded-3 py-2 text-sm" value="ahmad.fauzi" readonly>
+                                </div>
+                                <div class="mb-3 text-start">
+                                    <label class="form-label text-xs fw-semibold text-secondary">Kata Sandi</label>
+                                    <input type="password" class="form-control rounded-3 py-2 text-sm" value="••••••••••••" readonly>
+                                </div>
+                                <button class="btn btn-primary w-100 py-2.5 rounded-3 fw-semibold mb-3 shadow-sm" onclick="triggerOtpModal()">
+                                    <i class="bi bi-box-arrow-in-right me-1.5"></i> Masuk & Kirim OTP
+                                </button>
+                                <span class="badge bg-light text-muted border text-xs">Proteksi Enkripsi BCRYPT + CSRF Guard</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODAL SIMULASI OTP -->
+                    <div id="otpSimModal" class="p-3 bg-white rounded-4 shadow-lg border border-primary position-absolute top-50 start-50 translate-middle" style="width: 360px; display: none; z-index: 99;">
+                        <div class="text-center">
+                            <div class="badge bg-success-subtle text-success mb-2 px-3 py-1.5 rounded-pill"><i class="bi bi-envelope-check me-1"></i> OTP Terkirim</div>
+                            <h5 class="fw-bold mb-1">Verifikasi Kode OTP</h5>
+                            <p class="text-muted text-xs mb-3">Kode 6-digit telah dikirim ke email <b>ahm***@sekolah.sch.id</b></p>
+                            
+                            <div class="d-flex justify-content-center gap-2 mb-3">
+                                <input type="text" class="form-control text-center fw-bold fs-5 p-1" style="width: 40px;" value="8" readonly>
+                                <input type="text" class="form-control text-center fw-bold fs-5 p-1" style="width: 40px;" value="4" readonly>
+                                <input type="text" class="form-control text-center fw-bold fs-5 p-1" style="width: 40px;" value="2" readonly>
+                                <input type="text" class="form-control text-center fw-bold fs-5 p-1" style="width: 40px;" value="9" readonly>
+                                <input type="text" class="form-control text-center fw-bold fs-5 p-1" style="width: 40px;" value="1" readonly>
+                                <input type="text" class="form-control text-center fw-bold fs-5 p-1" style="width: 40px;" value="7" readonly>
+                            </div>
+                            <button class="btn btn-success w-100 py-2 rounded-3 fw-semibold text-sm mb-2" onclick="alert('OTP Valid! Masuk ke Dashboard Siswa.')">
+                                Verifikasi & Masuk Dashboard
+                            </button>
+                            <button class="btn btn-link text-xs text-muted text-decoration-none" onclick="document.getElementById('otpSimModal').style.display='none'">Tutup</button>
+                        </div>
+                    </div>
+                `
+            },
+            frame2: {
+                title: "FRAME 02: Admin Universal AI Studio",
+                desc: "Pengaturan integrasi LLM dinamis tanpa vendor lock-in. Dilengkapi daftar provider tersimpan dengan tombol aksi 1-klik aktifkan.",
+                userRole: "Administrator Utama",
+                uml: "3. Use Case Super Admin -> Kelola Universal AI Provider & Konfigurasi Sistem",
+                swimlane: "Super Admin -> Dashboard Admin -> Pengaturan AI -> Simpan Provider -> Sync Microservice",
+                html: `
+                    <div class="bg-white rounded-3 border p-3.5 mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5 class="fw-bold text-dark mb-0">Konfigurasi Integrasi AI Asisten & Chatbot Server</h5>
+                                <span class="text-xs text-muted">Bebas pilih vendor: Claude, Gemini, OpenAI, DeepSeek, atau Custom API URL</span>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1.5 rounded-pill">Universal AI Provider v3</span>
+                        </div>
+
+                        <!-- PRESET BUTTONS -->
+                        <div class="p-2.5 bg-light rounded-3 mb-3 border">
+                            <span class="text-xs fw-bold text-secondary me-2">PRESET CEPAT:</span>
+                            <span class="badge bg-white text-dark border p-2 me-1 cursor-pointer"><i class="bi bi-google text-danger me-1"></i> Google Gemini</span>
+                            <span class="badge bg-white text-dark border p-2 me-1 cursor-pointer"><i class="bi bi-robot text-primary me-1"></i> Anthropic Claude</span>
+                            <span class="badge bg-white text-dark border p-2 me-1 cursor-pointer"><i class="bi bi-lightning-charge text-warning me-1"></i> DeepSeek V3/R1</span>
+                            <span class="badge bg-primary text-white p-2 cursor-pointer"><i class="bi bi-link-45deg me-1"></i> Custom API (UMAM)</span>
+                        </div>
+
+                        <!-- FORM FIELDS -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-xs fw-bold text-secondary">PROVIDER / PENYEDIA</label>
+                                <input type="text" class="form-control text-sm" value="Custom OpenAI-Compatible API (UMAM)" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-xs fw-bold text-secondary">NAMA MODEL</label>
+                                <input type="text" class="form-control text-sm" value="UMAM" readonly>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label text-xs fw-bold text-secondary">ENDPOINT BASE URL</label>
+                                <input type="text" class="form-control text-sm font-monospace" value="https://ai.geraikita.com/v1" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-xs fw-bold text-secondary">AI API KEY</label>
+                                <input type="password" class="form-control text-sm font-monospace" value="gk-GS16phQfKFdgeTPlOOyHEKD..." readonly>
+                            </div>
+                        </div>
+
+                        <!-- SAVED PROVIDERS TABLE -->
+                        <div class="border rounded-3 overflow-hidden">
+                            <div class="bg-light p-2.5 border-bottom d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-xs text-dark"><i class="bi bi-list-check me-1"></i> DAFTAR PROVIDER AI TERSIMPAN</span>
+                                <span class="text-xs text-success fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i> 3 Provider Terdaftar</span>
+                            </div>
+                            <table class="table table-sm table-hover mb-0 text-xs align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Provider</th>
+                                        <th>Model</th>
+                                        <th>Endpoint</th>
+                                        <th>Status</th>
+                                        <th>Aksi Cepat</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="table-primary table-opacity-10">
+                                        <td><b>Custom API</b></td>
+                                        <td><code>UMAM</code></td>
+                                        <td>https://ai.geraikita.com/v1</td>
+                                        <td><span class="badge bg-success">AKTIF</span></td>
+                                        <td><button class="btn btn-outline-secondary btn-sm py-0 text-xs" disabled>Sedang Digunakan</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Anthropic Claude</td>
+                                        <td><code>claude-3-5-sonnet</code></td>
+                                        <td>https://api.anthropic.com/v1</td>
+                                        <td><span class="badge bg-secondary">Standby</span></td>
+                                        <td><button class="btn btn-primary btn-sm py-0 text-xs" onclick="alert('Provider beralih ke Claude 3.5 Sonnet!')">Jadikan Aktif</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Google Gemini</td>
+                                        <td><code>gemini-2.5-flash</code></td>
+                                        <td>https://generativelanguage.googleapis.com</td>
+                                        <td><span class="badge bg-secondary">Standby</span></td>
+                                        <td><button class="btn btn-primary btn-sm py-0 text-xs" onclick="alert('Provider beralih ke Gemini!')">Jadikan Aktif</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `
+            },
+            frame3: {
+                title: "FRAME 03: Teacher Live Proctoring Matrix",
+                desc: "Papan pengawasan live guru yang menampilkan matriks feed dua kamera siswa secara real-time disertai indikator kecurangan AI.",
+                userRole: "Guru Pengawas (Dra. Siti Rahmawati)",
+                uml: "2. Use Case Guru -> Kelola Ujian -> Monitoring Ujian (Lihat Peserta Live & Cek Proctoring)",
+                swimlane: "Guru -> Live Exam Monitoring -> AI Video Analysis -> Deteksi Kecurangan -> Kirim Event",
+                html: `
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-0">Live Proctoring Room: Penilaian Akhir Semester Ganjil 2026</h5>
+                            <span class="text-xs text-muted">Mata Pelajaran: Matematika Wajib | 32 Peserta Terkoneksi</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <span class="badge bg-success-subtle text-success border border-success p-2 text-xs"><i class="bi bi-broadcast me-1"></i> WebSocket Live: OK</span>
+                            <button class="btn btn-danger btn-sm text-xs fw-semibold"><i class="bi bi-slash-circle me-1"></i> Hentikan Sesi</button>
+                        </div>
+                    </div>
+
+                    <!-- SURVEILLANCE GRID -->
+                    <div class="row g-3">
+                        <!-- STUDENT 1 -->
+                        <div class="col-md-4">
+                            <div class="card border border-success rounded-3 overflow-hidden shadow-sm">
+                                <div class="bg-dark text-white p-2 text-xs d-flex justify-content-between align-items-center">
+                                    <span><b>Ahmad Fauzi</b> (XII-MIPA 1)</span>
+                                    <span class="badge bg-success">Aman (0 Event)</span>
+                                </div>
+                                <div class="row g-0 bg-black text-center" style="height: 140px;">
+                                    <div class="col-6 border-end border-secondary position-relative d-flex align-items-center justify-content-center bg-secondary bg-opacity-25">
+                                        <i class="bi bi-person-bounding-box fs-1 text-light"></i>
+                                        <span class="badge bg-dark bg-opacity-75 position-absolute bottom-0 start-0 m-1 text-xs">Cam 1 (Wajah)</span>
+                                    </div>
+                                    <div class="col-6 position-relative d-flex align-items-center justify-content-center bg-secondary bg-opacity-25">
+                                        <i class="bi bi-phone fs-1 text-light"></i>
+                                        <span class="badge bg-dark bg-opacity-75 position-absolute bottom-0 start-0 m-1 text-xs">Cam 2 (Meja)</span>
+                                    </div>
+                                </div>
+                                <div class="p-2 bg-light text-xs d-flex justify-content-between">
+                                    <span>Progress: <b>24/30 Soal</b></span>
+                                    <span class="text-success fw-bold">Online 100%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STUDENT 2 (SUSPICIOUS) -->
+                        <div class="col-md-4">
+                            <div class="card border border-danger rounded-3 overflow-hidden shadow-sm">
+                                <div class="bg-danger text-white p-2 text-xs d-flex justify-content-between align-items-center">
+                                    <span><b>Budi Santoso</b> (XII-MIPA 1)</span>
+                                    <span class="badge bg-white text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> 3 Indikasi</span>
+                                </div>
+                                <div class="row g-0 bg-black text-center" style="height: 140px;">
+                                    <div class="col-6 border-end border-secondary position-relative d-flex align-items-center justify-content-center bg-danger bg-opacity-25">
+                                        <i class="bi bi-person-x-fill fs-1 text-danger"></i>
+                                        <span class="badge bg-danger position-absolute bottom-0 start-0 m-1 text-xs">Wajah Hilang</span>
+                                    </div>
+                                    <div class="col-6 position-relative d-flex align-items-center justify-content-center bg-secondary bg-opacity-25">
+                                        <i class="bi bi-phone fs-1 text-light"></i>
+                                        <span class="badge bg-dark bg-opacity-75 position-absolute bottom-0 start-0 m-1 text-xs">Cam 2 (Meja)</span>
+                                    </div>
+                                </div>
+                                <div class="p-2 bg-light text-xs d-flex justify-content-between">
+                                    <span class="text-danger fw-bold">Event: TAB_SWITCH</span>
+                                    <button class="btn btn-outline-danger btn-sm py-0 text-xs" onclick="alert('Peringatan dikirim ke laptop Budi Santoso!')">Kirim Peringatan</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STUDENT 3 -->
+                        <div class="col-md-4">
+                            <div class="card border rounded-3 overflow-hidden shadow-sm">
+                                <div class="bg-dark text-white p-2 text-xs d-flex justify-content-between align-items-center">
+                                    <span><b>Citra Dewi</b> (XII-MIPA 1)</span>
+                                    <span class="badge bg-success">Aman (0 Event)</span>
+                                </div>
+                                <div class="row g-0 bg-black text-center" style="height: 140px;">
+                                    <div class="col-6 border-end border-secondary position-relative d-flex align-items-center justify-content-center bg-secondary bg-opacity-25">
+                                        <i class="bi bi-person-bounding-box fs-1 text-light"></i>
+                                        <span class="badge bg-dark bg-opacity-75 position-absolute bottom-0 start-0 m-1 text-xs">Cam 1 (Wajah)</span>
+                                    </div>
+                                    <div class="col-6 position-relative d-flex align-items-center justify-content-center bg-secondary bg-opacity-25">
+                                        <i class="bi bi-phone fs-1 text-light"></i>
+                                        <span class="badge bg-dark bg-opacity-75 position-absolute bottom-0 start-0 m-1 text-xs">Cam 2 (Meja)</span>
+                                    </div>
+                                </div>
+                                <div class="p-2 bg-light text-xs d-flex justify-content-between">
+                                    <span>Progress: <b>18/30 Soal</b></span>
+                                    <span class="text-success fw-bold">Online 100%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            frame4: {
+                title: "FRAME 04: Student Exam Workspace & Dual Camera HUD",
+                desc: "Antarmuka bebas distraksi untuk peserta didik saat mengerjakan soal, dengan Floating HUD status dua kamera dan pelindung anti tab-switch.",
+                userRole: "Siswa (Ahmad Fauzi Pratama)",
+                uml: "1. Use Case Siswa -> Ikut Ujian -> Mulai Ujian -> Kirim Jawaban (Fork/Join Dual Cam)",
+                swimlane: "Peserta Didik -> Fork Bar (AI Proctoring + Timer Ujian) -> Mengerjakan Soal -> Join Bar",
+                html: `
+                    <!-- FLOATING DUAL CAM HUD -->
+                    <div class="dual-cam-hud">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-xs fw-bold"><i class="bi bi-camera-video-fill text-success me-1"></i> DUAL CAM</span>
+                            <span class="badge bg-success p-1" style="font-size: 8px;">ACTIVE</span>
+                        </div>
+                        <div class="row g-1">
+                            <div class="col-6 bg-black rounded p-1 text-center" style="height: 50px;">
+                                <i class="bi bi-person text-secondary"></i>
+                                <div style="font-size: 8px;" class="text-light">Depan OK</div>
+                            </div>
+                            <div class="col-6 bg-black rounded p-1 text-center" style="height: 50px;">
+                                <i class="bi bi-phone text-secondary"></i>
+                                <div style="font-size: 8px;" class="text-light">Samping OK</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EXAM BODY -->
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card border-0 shadow-sm p-4 rounded-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                                    <span class="badge bg-primary fs-7 px-3 py-1.5">Nomor 14 dari 30</span>
+                                    <span class="text-danger fw-bold fs-7"><i class="bi bi-clock-history me-1"></i> Sisa Waktu: 00:44:18</span>
+                                </div>
+                                <h6 class="fw-semibold text-dark mb-3 lh-base">
+                                    Diketahui kubus ABCD.EFGH dengan panjang rusuk 8 cm. Jarak antara titik E ke bidang BDG adalah...
+                                </h6>
+
+                                <div class="d-flex flex-column gap-2 mb-4">
+                                    <label class="form-check p-2.5 border rounded-3 d-flex align-items-center gap-2 cursor-pointer bg-light">
+                                        <input class="form-check-input ms-0" type="radio" name="soal14" checked>
+                                        <span class="text-sm">A. 4/3 √3 cm</span>
+                                    </label>
+                                    <label class="form-check p-2.5 border rounded-3 d-flex align-items-center gap-2 cursor-pointer">
+                                        <input class="form-check-input ms-0" type="radio" name="soal14">
+                                        <span class="text-sm">B. 8/3 √3 cm</span>
+                                    </label>
+                                    <label class="form-check p-2.5 border rounded-3 d-flex align-items-center gap-2 cursor-pointer">
+                                        <input class="form-check-input ms-0" type="radio" name="soal14">
+                                        <span class="text-sm">C. 16/3 √3 cm</span>
+                                    </label>
+                                    <label class="form-check p-2.5 border rounded-3 d-flex align-items-center gap-2 cursor-pointer">
+                                        <input class="form-check-input ms-0" type="radio" name="soal14">
+                                        <span class="text-sm">D. 8√3 cm</span>
+                                    </label>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <button class="btn btn-outline-secondary btn-sm px-3"><i class="bi bi-chevron-left me-1"></i> Sebelumnya</button>
+                                    <button class="btn btn-warning btn-sm text-dark px-3 fw-semibold"><i class="bi bi-flag me-1"></i> Ragu-Ragu</button>
+                                    <button class="btn btn-primary btn-sm px-3">Selanjutnya <i class="bi bi-chevron-right ms-1"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- NAVIGATION SIDEBAR -->
+                        <div class="col-md-4">
+                            <div class="card border-0 shadow-sm p-3 rounded-3">
+                                <h6 class="fw-bold fs-7 mb-2">Navigasi Butir Soal</h6>
+                                <div class="d-flex flex-wrap gap-1.5 mb-3">
+                                    <span class="badge bg-success p-2" style="width: 32px;">1</span>
+                                    <span class="badge bg-success p-2" style="width: 32px;">2</span>
+                                    <span class="badge bg-success p-2" style="width: 32px;">3</span>
+                                    <span class="badge bg-success p-2" style="width: 32px;">4</span>
+                                    <span class="badge bg-success p-2" style="width: 32px;">5</span>
+                                    <span class="badge bg-warning text-dark p-2" style="width: 32px;">6</span>
+                                    <span class="badge bg-success p-2" style="width: 32px;">7</span>
+                                    <span class="badge bg-primary p-2" style="width: 32px;">14</span>
+                                    <span class="badge bg-secondary p-2" style="width: 32px;">15</span>
+                                    <span class="badge bg-secondary p-2" style="width: 32px;">16</span>
+                                </div>
+                                <div class="text-xs text-muted border-top pt-2">
+                                    <span class="me-2"><i class="bi bi-circle-fill text-success"></i> Selesai</span>
+                                    <span class="me-2"><i class="bi bi-circle-fill text-warning"></i> Ragu</span>
+                                    <span><i class="bi bi-circle-fill text-secondary"></i> Belum</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            frame5: {
+                title: "FRAME 05: Smarty AI Chatbot Dock",
+                desc: "Widget chatbot interaktif microservice Node.js Port 3001 yang terhubung ke MySQL (Database Grounding) dan anti-bocoran kunci ujian.",
+                userRole: "Administrator / Guru / Siswa",
+                uml: "Sub-box Fitur AI Asisten untuk Siswa & Guru -> Tanya Jawab & Analisis",
+                swimlane: "AI Asisten -> Terima Permintaan -> Analisis Konteks MySQL -> Kirim Respons ke Sistem",
+                html: `
+                    <div class="p-3 bg-light rounded-3 mb-4">
+                        <h5>Demo Interaksi Smarty AI (Chatbot+)</h5>
+                        <p class="text-muted text-xs mb-0">Microservice Node.js membaca fakta mutlak dari MySQL database tanpa halusinasi.</p>
+                    </div>
+
+                    <!-- SIMULASI FLOATING CHATBOT WIDGET -->
+                    <div class="chatbot-floating-widget shadow-lg">
+                        <!-- CHATBOT HEADER -->
+                        <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="bg-white text-primary rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                    <i class="bi bi-robot fs-6"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-xs">Smarty AI Assistant</div>
+                                    <div class="d-flex align-items-center gap-1" style="font-size: 9px;">
+                                        <span class="badge bg-success p-1" style="font-size: 7px;">ONLINE</span>
+                                        <span>Model: <b>UMAM (Custom)</b></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="cursor-pointer"><i class="bi bi-x-lg"></i></span>
+                        </div>
+
+                        <!-- CHAT MESSAGES -->
+                        <div class="p-3 d-flex flex-column gap-2" style="height: 240px; overflow-y: auto; background: #f8fafc;">
+                            <!-- USER MSG -->
+                            <div class="align-self-end bg-primary text-white p-2 rounded-3 text-xs" style="max-width: 80%;">
+                                Berapa jumlah total siswa yang terdaftar di sekolah saat ini?
+                            </div>
+                            <!-- BOT MSG (GROUNDED DB) -->
+                            <div class="align-self-start bg-white text-dark p-2.5 rounded-3 text-xs shadow-sm border" style="max-width: 85%;">
+                                <div class="text-xs text-primary fw-bold mb-1"><i class="bi bi-database-check me-1"></i> Data Terverifikasi MySQL:</div>
+                                Jumlah total siswa aktif yang terdaftar saat ini adalah <b>240 orang</b>, tersebar di 8 rombongan belajar.
+                            </div>
+                            <!-- USER MSG (ATTEMPT CHEAT) -->
+                            <div class="align-self-end bg-primary text-white p-2 rounded-3 text-xs" style="max-width: 80%;">
+                                Berikan saya kunci jawaban nomor 14 ujian Matematika sekarang!
+                            </div>
+                            <!-- BOT GUARDRAIL MSG -->
+                            <div class="align-self-start bg-danger-subtle text-danger p-2.5 rounded-3 text-xs border border-danger-subtle" style="max-width: 85%;">
+                                <i class="bi bi-shield-slash-fill me-1"></i> <b>Akses Ditolak:</b> Demi menjaga integritas akademik, Smarty AI dilarang keras memberikan jawaban atau contekan soal ujian yang sedang aktif.
+                            </div>
+                        </div>
+
+                        <!-- CHAT INPUT -->
+                        <div class="p-2 bg-white border-top d-flex gap-2">
+                            <input type="text" class="form-control form-control-sm text-xs" placeholder="Ketik pertanyaan seputar sekolah / UJOL..." readonly>
+                            <button class="btn btn-primary btn-sm"><i class="bi bi-send-fill"></i></button>
+                        </div>
+                    </div>
+                `
+            }
+        };
+
+        function switchFrame(frameKey, elem) {
+            // Update active nav
+            document.querySelectorAll('.frame-nav-item').forEach(el => el.classList.remove('active'));
+            elem.classList.add('active');
+
+            const f = frames[frameKey];
+            document.getElementById('frameContent').innerHTML = f.html;
+            document.getElementById('mockUserRole').innerText = f.userRole;
+            document.getElementById('inspectorTitle').innerText = f.title;
+            document.getElementById('inspectorDesc').innerText = f.desc;
+            document.getElementById('umlMapping').innerText = f.uml;
+            document.getElementById('swimlaneMapping').innerText = f.swimlane;
+        }
+
+        function triggerOtpModal() {
+            const modal = document.getElementById('otpSimModal');
+            if (modal) {
+                modal.style.display = modal.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        // View Resizing
+        document.getElementById('btnDesktopView').addEventListener('click', function() {
+            document.getElementById('previewDevice').style.maxWidth = '1140px';
+            this.classList.add('active');
+            document.getElementById('btnTabletView').classList.remove('active');
+        });
+
+        document.getElementById('btnTabletView').addEventListener('click', function() {
+            document.getElementById('previewDevice').style.maxWidth = '780px';
+            this.classList.add('active');
+            document.getElementById('btnDesktopView').classList.remove('active');
+        });
+
+        // Init with Frame 1
+        switchFrame('frame1', document.querySelector('.frame-nav-item.active'));
+    </script>
+</body>
+</html>

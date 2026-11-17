@@ -164,7 +164,7 @@ erDiagram
 5. **`subjects`**: Mata pelajaran SMA (id, code, name, description, timestamps).
 6. **`question_banks`**: Bank soal guru (id, teacher_id [FK], subject_id [FK], title, total_questions, timestamps).
 7. **`questions`**: Butir soal (id, question_bank_id [FK], question_text, question_type, options [JSON], correct_answer, score_weight, timestamps).
-8. **`exams`**: Paket pelaksanaan ujian (id, teacher_id [FK], subject_id [FK], question_bank_id [FK], title, token, duration_minutes, status, timestamps).
+8. **`exams`**: Paket pelaksanaan ujian (id, teacher_id [FK], subject_id [FK], question_bank_id [FK], title,  token, duration_minutes, status, timestamps).
 9. **`exam_participants`**: Peserta sesi ujian (id, exam_id [FK], student_id [FK], status, score, ip_address, timestamps).
 10. **`answers`**: Lembar jawaban peserta (id, exam_participant_id [FK], question_id [FK], student_answer, is_correct, score_obtained, timestamps).
 11. **`results`**: Hasil rekapitulasi nilai (id, exam_participant_id [FK], total_questions, correct_answers, final_score, is_passed, timestamps).
@@ -211,3 +211,33 @@ Hasil pengujian otomatis dan simulasi lintas peran:
    - Akses `/dashboard`, `/admin/dashboard`, `/teacher/dashboard`, `/student/dashboard` ➔ **HTTP 302 Redirect** otomatis diarahkan ke `/login`.
 5. **Pencatatan Audit Log Keamanan:**
    - Setiap insiden akses lintas peran otomatis tercatat ke tabel `audit_logs` dengan tipe aksi `ACCESS_DENIED`, mencantumkan URL target, role penyerang/pelanggar, dan waktu kejadian.
+
+---
+
+## 🚀 CI/CD Pipeline & Automated Testing (UAS Rekayasa Perangkat Lunak)
+
+Sistem SmartExam AI (UJOL) telah mengintegrasikan pipeline **Continuous Integration & Continuous Deployment (CI/CD)** menggunakan **GitHub Actions** (`.github/workflows/ci.yml`) dengan standar pengujian perangkat lunak:
+
+### 1. Cakupan Pengujian Otomatis (18 Unit Tests)
+- **PHP Syntax Linting:** Memvalidasi seluruh sintaks PHP di `app/`, `public/`, dan `tests/` bebas error.
+- **SanitizeHelperTest:** Pengujian sanitasi input XSS, filter tag HTML berbahaya, pembersihan kutip, dan validasi format email.
+- **CsrfHelperTest:** Pengujian pembuatan token 64-karakter hex (32-byte) dan validasi token anti-CSRF pada form web.
+- **UrlHelperTest:** Pengujian resolusi Base URL dinamis dan pemetaan path aset statis.
+- **RouterTest:** Pengujian integritas rute utama sistem MVC (Home, Login, Admin, Guru, Siswa).
+- **SecurityPasswordTest:** Pengujian algoritma hashing `PASSWORD_BCRYPT` dan verifikasi sandi.
+- **ChatbotGuardrailTest:** Pengujian deteksi kata kunci kecurangan (anti-bocor kunci jawaban ujian).
+- **Node.js Chatbot Service Check:** Validasi integritas kode backend microservice Chatbot (Port 3001).
+
+### 2. Cara Menjalankan Unit Test Secara Lokal
+Jalankan salah satu perintah berikut di terminal (PowerShell / Command Prompt):
+```bash
+# Opsi 1: Runner Mandiri (Cepat, berwarna, & tanpa dependensi eksternal)
+php tests/run_tests.php
+
+# Opsi 2: Menggunakan PHPUnit Resmi (Standar Industri)
+vendor/bin/phpunit --testdox
+
+# Opsi 3: Menggunakan Composer Script
+composer test
+```
+

@@ -1,0 +1,90 @@
+name: SmartExam AI CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  # ==============================================================
+  # JOB 1: PHP Linting, Code Validation & PHPUnit Testing
+  # ==============================================================
+  php-test:
+    name: PHP Unit Test & Syntax Check (${{ matrix.php-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['8.2', '8.3']
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP Environment
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, pdo, pdo_mysql, curl, json, openssl
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Cache Composer Dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer Dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: PHP Syntax Check (Linting)
+        run: |
+          echo "Memeriksa sintaks PHP pada direktori app/, public/, dan tests/..."
+          find app public tests -name "*.php" -exec php -l {} \; > /dev/null
+          echo "✓ Seluruh file PHP bebas dari kesalahan sintaks."
+
+      - name: Run PHPUnit Test Suite
+        env:
+          APP_ENV: testing
+          BASE_URL: http://localhost
+        run: vendor/bin/phpunit --testdox
+
+      - name: Run Standalone Test Runner (Verification)
+        run: php tests/run_tests.php
+
+  # ==============================================================
+  # JOB 2: Node.js Chatbot Service Syntax & Sanity Check
+  # ==============================================================
+  node-chatbot-check:
+    name: Node.js Chatbot Microservice Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: chatbot-server/package.json
+
+      - name: Install Node.js Dependencies
+        run: |
+          cd chatbot-server
+          npm install
+
+      - name: Validate JavaScript Syntax
+        run: |
+          cd chatbot-server
+          echo "Memeriksa sintaks JavaScript pada chatbot microservice..."
+          node -c server.js db.js dbQueries.js
+          echo "✓ Seluruh file script Node.js valid dan bebas sintaks error."
