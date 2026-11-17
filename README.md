@@ -117,9 +117,10 @@ SmartExam AI mengintegrasikan 3 pilar teknologi kecerdasan buatan:
 
 ## 📹 6. Link Video YouTube Presentasi & Demo UAS
 
-> 🎥 **Tautan Video YouTube:**  
-> **[Link Video YouTube Presentasi & Demo UAS - Akan Ditambahkan oleh Mahasiswa]**  
-> *(Silakan edit bagian ini dan tempelkan URL video presentasi YouTube Anda)*
+> 🎥 **Tautan Video Presentasi & Demonstrasi Sistem UAS:**  
+> **[https://youtu.be/85C51N7PW3A](https://youtu.be/85C51N7PW3A?si=M62-_TI05wqr79Tr)**  
+> 
+> *Video ini memuat pemaparan latar belakang, pemodelan sistem (UML Standar SNI), demonstrasi fitur AI Dual Camera Proctoring, integrasi Universal AI & Chatbot Grounded Database, serta verifikasi pipeline CI/CD GitHub Actions.*
 
 ---
 
