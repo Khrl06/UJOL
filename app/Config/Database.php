@@ -6,11 +6,11 @@
 
 return [
     'driver'    => 'mysql',
-    'host'      => '127.0.0.1',
-    'port'      => '3306',
-    'database'  => 'smartexam_db',
-    'username'  => 'root',
-    'password'  => '',
+    'host'      => getenv('MYSQLHOST') ?: (getenv('DB_HOST') ?: '127.0.0.1'),
+    'port'      => getenv('MYSQLPORT') ?: (getenv('DB_PORT') ?: '3306'),
+    'database'  => getenv('MYSQLDATABASE') ?: (getenv('DB_NAME') ?: 'smartexam_db'),
+    'username'  => getenv('MYSQLUSER') ?: (getenv('DB_USER') ?: 'root'),
+    'password'  => getenv('MYSQLPASSWORD') !== false ? getenv('MYSQLPASSWORD') : (getenv('DB_PASS') ?: ''),
     'charset'   => 'utf8mb4',
     'collation' => 'utf8mb4_unicode_ci',
     'options'   => [

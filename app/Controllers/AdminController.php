@@ -204,7 +204,7 @@ class AdminController extends Controller
         if ($teacherId > 0) {
             $this->auditModel->logActivity(AuthMiddleware::id(), 'CREATE_TEACHER', "Menambahkan guru baru: {$name} ({$username})");
             SessionHelper::setFlash('success', "Data guru <strong>{$name}</strong> berhasil ditambahkan beserta akun sistem.");
-        } else {
+        } elseif (!SessionHelper::hasFlash('danger')) {
             SessionHelper::setFlash('danger', "Gagal menambahkan data guru. Terjadi kesalahan database.");
         }
 

@@ -20,7 +20,8 @@ class SessionHelper
                 }
 
                 // Security Hardening: Cookie Flags & Strict Mode
-                $isSecure = isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) === 'on';
+                $isSecure = (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) === 'on')
+                    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
                 @ini_set('session.use_only_cookies', '1');
                 @ini_set('session.use_strict_mode', '1');
                 @ini_set('session.cookie_httponly', '1');

@@ -501,6 +501,108 @@ class TeacherController extends Controller
         $this->redirect("teacher/bankQuestions?bank_id={$bankId}");
     }
 
+    /**
+     * Import Butir Soal dari File CSV / Excel Tab-Delimited
+     * POST /teacher/importQuestionsFile
+     */
+    public function importQuestionsFile(): void
+    {
+        if (!$this->isPost()) { $this->redirect('teacher/banks'); return; }
+        if (!CsrfHelper::validateToken($this->getPost('csrf_token'))) {
+            SessionHelper::setFlash('danger', 'Token CSRF tidak valid.');
+            $this->redirect('teacher/banks');
+            return;
+        }
+
+        $teacherId = $this->getLoggedInTeacherId();
+        $bankId    = (int)$this->getPost('question_bank_id', 0);
+
+        if (!$this->bankModel->isOwnedByTeacher($bankId, $teacherId)) {
+            SessionHelper::setFlash('danger', 'Akses ditolak.');
+            $this->redirect('teacher/banks');
+            return;
+        }
+
+        if (empty($_FILES['file_csv']['tmp_name']) || !is_uploaded_file($_FILES['file_csv']['tmp_name'])) {
+            SessionHelper::setFlash('warning', 'Pilih file CSV / Excel (.csv) terlebih dahulu.');
+            $this->redirect("teacher/bankQuestions?bank_id={$bankId}");
+            return;
+        }
+
+        $filePath = $_FILES['file_csv']['tmp_name'];
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            SessionHelper::setFlash('danger', 'Gagal membaca file yang diunggah.');
+            $this->redirect("teacher/bankQuestions?bank_id={$bankId}");
+            return;
+        }
+
+        // Deteksi UTF-8 BOM
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+
+        $header = fgetcsv($handle, 2048, ',');
+        if (!$header || count($header) < 2) {
+            rewind($handle);
+            $header = fgetcsv($handle, 2048, ';');
+            $delimiter = ';';
+        } else {
+            $delimiter = ',';
+        }
+
+        $saved = 0;
+        while (($row = fgetcsv($handle, 4096, $delimiter)) !== false) {
+            if (empty(array_filter($row))) continue;
+            // Format yang diharapkan: [Soal, Opsi A, Opsi B, Opsi C, Opsi D, Opsi E, Kunci, Pembahasan, Bobot]
+            $qText = trim($row[0] ?? '');
+            if (empty($qText)) continue;
+
+            $optA = trim($row[1] ?? '');
+            $optB = trim($row[2] ?? '');
+            $optC = trim($row[3] ?? '');
+            $optD = trim($row[4] ?? '');
+            $optE = trim($row[5] ?? '-');
+            $key  = strtoupper(trim($row[6] ?? 'A'));
+            $expl = trim($row[7] ?? 'Pembahasan materi soal.');
+            $wgt  = !empty($row[8]) ? (float)$row[8] : 2.0;
+
+            if (!empty($optA) && !empty($optB)) {
+                $qId = $this->questionModel->create([
+                    'question_bank_id' => $bankId,
+                    'question_text'    => $qText,
+                    'question_type'    => 'multiple_choice',
+                    'options'          => [
+                        'A' => $optA,
+                        'B' => $optB,
+                        'C' => $optC ?: '-',
+                        'D' => $optD ?: '-',
+                        'E' => $optE ?: '-'
+                    ],
+                    'correct_answer'   => in_array($key, ['A','B','C','D','E'], true) ? $key : 'A',
+                    'score_weight'     => $wgt > 0 ? $wgt : 2.0,
+                    'difficulty'       => 'sedang',
+                    'is_active'        => 1,
+                    'explanation'      => $expl
+                ]);
+                if ($qId > 0) $saved++;
+            }
+        }
+        fclose($handle);
+
+        $this->bankModel->syncTotalQuestions($bankId);
+
+        $this->auditModel->logActivity(
+            AuthMiddleware::id(),
+            'IMPORT_QUESTIONS_FILE',
+            "Guru mengimpor {$saved} butir soal dari file CSV ke bank ID {$bankId}."
+        );
+
+        SessionHelper::setFlash('success', "Berhasil mengimpor <strong>{$saved} butir soal</strong> dari file CSV!");
+        $this->redirect("teacher/bankQuestions?bank_id={$bankId}");
+    }
+
     public function editQuestion(): void
     {
         if (!$this->isPost()) { $this->redirect('teacher/banks'); return; }

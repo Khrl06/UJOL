@@ -14,9 +14,11 @@ define('APP_ENV', 'development'); // development | production
 // Set Timezone default Indonesia Western Time
 date_default_timezone_set('Asia/Jakarta');
 
-// Deteksi otomatis Base URL (Mendukung XAMPP subfolder /UJOL maupun PHP Built-in Server)
+// Deteksi otomatis Base URL (Mendukung XAMPP subfolder /UJOL, Railway, Reverse Proxy, maupun PHP Built-in Server)
 if (!defined('BASE_URL')) {
-    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
+        || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
     $protocol = $isHttps ? "https://" : "http://";
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     

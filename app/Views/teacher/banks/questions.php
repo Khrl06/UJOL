@@ -38,7 +38,10 @@ $difficulty = $difficulty ?? '';
                 <i class="bi bi-robot me-1"></i> ⚡ Generator Soal Otomatis
             </button>
             <button type="button" class="btn btn-outline-primary btn-sm rounded-3 px-3 font-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalBatchImport">
-                <i class="bi bi-clipboard2-plus me-1"></i> Tempel Cepat (Auto-Parse)
+                <i class="bi bi-clipboard2-plus me-1.5"></i>Tempel Teks Soal
+            </button>
+            <button type="button" class="btn btn-outline-success btn-sm rounded-3 px-3 font-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalImportCsv">
+                <i class="bi bi-file-earmark-excel me-1.5"></i>Upload File CSV/Excel
             </button>
             <button type="button" class="btn btn-primary btn-sm rounded-3 px-3 font-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAddMC">
                 <i class="bi bi-list-check me-1"></i> + Pilihan Ganda (A-E)
@@ -728,6 +731,41 @@ $difficulty = $difficulty ?? '';
 <!-- =========================================================================
      MODAL BATCH IMPORT SOAL (AUTO-PARSE TEKS MASSAL)
      ========================================================================= -->
+<div class="modal fade" id="modalImportCsv" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom bg-success text-white">
+                <h5 class="modal-title font-bold">
+                    <i class="bi bi-file-earmark-excel me-2"></i>Upload File Soal CSV / Excel
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= base_url('teacher/importQuestionsFile') ?>" method="POST" enctype="multipart/form-data">
+                <?= CsrfHelper::tokenField() ?>
+                <input type="hidden" name="question_bank_id" value="<?= $bank['id'] ?>">
+
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label text-xs font-semibold text-secondary mb-1">Pilih File CSV / Excel (.csv) *</label>
+                        <input type="file" name="file_csv" class="form-control text-sm" accept=".csv" required>
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 text-xs mb-0">
+                        <strong class="d-block mb-1"><i class="bi bi-info-circle me-1"></i>Urutan Kolom CSV:</strong>
+                        <code>Pertanyaan, Opsi A, Opsi B, Opsi C, Opsi D, Opsi E, Kunci (A-E), Pembahasan, Bobot Nilai</code>
+                    </div>
+                </div>
+                <div class="modal-footer border-top bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success btn-sm px-4 font-bold shadow-sm">
+                        <i class="bi bi-cloud-arrow-up me-1"></i> Upload & Impor Sekarang
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalBatchImport" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow">

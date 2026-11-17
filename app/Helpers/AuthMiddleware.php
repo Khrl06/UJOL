@@ -200,7 +200,9 @@ class AuthMiddleware
         $lifetime = defined('REMEMBER_COOKIE_LIFETIME') ? REMEMBER_COOKIE_LIFETIME : 2592000;
         $cookieName = defined('REMEMBER_COOKIE_NAME') ? REMEMBER_COOKIE_NAME : 'smartexam_remember_token';
 
-        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
 
         setcookie($cookieName, $cookieValue, [
             'expires'  => time() + $lifetime,

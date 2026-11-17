@@ -20,6 +20,10 @@ $participant = $participant ?? [];
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- KaTeX CDN untuk Render Rumus Matematika/Sains Cepat -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
     <!-- Custom Style -->
     <link rel="stylesheet" href="<?= base_url('assets/css/custom.css') ?>">
     <style>
@@ -646,6 +650,32 @@ function renderCurrentQuestion() {
         });
     }
 
+    // Auto-render rumus KaTeX jika ada di teks soal atau pilihan
+    if (window.renderMathInElement) {
+        try {
+            renderMathInElement(document.getElementById('questionTextContainer'), {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false
+            });
+            renderMathInElement(optionsContainer, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false
+            });
+        } catch(e) {
+            console.warn('[KaTeX] Render error:', e);
+        }
+    }
+
     // Navigation Buttons State
     document.getElementById('btnPrev').disabled = (currentIndex === 0);
     document.getElementById('btnNext').disabled = (currentIndex === QUESTIONS.length - 1);
@@ -1146,6 +1176,42 @@ function startEdgeVisionLoop() {
                 }
             } else {
                 darkFrameDuration = 0;
+            }
+
+            // 2. Uji FACE_MISSING & Deteksi Keberadaan Wajah Otomatis (Face Detection Edge AI)
+            if ('FaceDetector' in window) {
+                try {
+                    const detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 5 });
+                    detector.detect(offscreenCanvas).then(faces => {
+                        if (!faces || faces.length === 0) {
+                            faceMissingDuration += 3;
+                            if (faceMissingDuration >= 6) {
+                                reportProctoringEvent({
+                                    event_type: 'FACE_MISSING',
+                                    camera: 'cam1',
+                                    confidence_score: 92.00,
+                                    duration: faceMissingDuration,
+                                    severity: 'high',
+                                    description: `Wajah peserta tidak terdeteksi di depan kamera selama ${faceMissingDuration} detik.`
+                                });
+                            }
+                        } else if (faces.length > 1) {
+                            faceMissingDuration = 0;
+                            reportProctoringEvent({
+                                event_type: 'MULTIPLE_FACES',
+                                camera: 'cam1',
+                                confidence_score: 95.00,
+                                duration: 3,
+                                severity: 'high',
+                                description: `Terdeteksi lebih dari satu orang di depan kamera ujian (${faces.length} wajah terpindai).`
+                            });
+                        } else {
+                            faceMissingDuration = 0;
+                        }
+                    }).catch(() => {});
+                } catch (fdErr) {
+                    // Fallback jika API FaceDetector tidak aktif di browser
+                }
             }
 
         } catch (e) {
